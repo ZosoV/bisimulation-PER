@@ -2,7 +2,7 @@
 baselines/
 dopamine_logs/
 logs/
-
+outputs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
