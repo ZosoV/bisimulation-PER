@@ -73,8 +73,8 @@ cd baselines && pip install -e .
 cd ..
 pip install ale-py
 pip install seaborn
-pip uninstall -y jax jaxlib
-pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+# pip uninstall -y jax jaxlib
+# pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 seeds=(118398 919409 711872 442081 189061)
 
