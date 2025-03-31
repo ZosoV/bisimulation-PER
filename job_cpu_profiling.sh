@@ -69,8 +69,8 @@ PIP_CACHE_DIR="/scratch/${USER}/pip"
 # that you define the version of the Python module – this will also ensure that if the
 # module is already installed in the virtual environment it won't be modified.
 pip install dopamine-rl
-cd baselines && pip install -e .
-cd ..
+# cd baselines && pip install -e .
+# cd ..
 pip install ale-py
 pip install seaborn
 # pip uninstall -y jax jaxlib
