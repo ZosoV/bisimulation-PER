@@ -38,6 +38,39 @@ SLURM_ARRAY_TASK_ID=0
 # Select the seed based on the SLURM array task ID
 SEED=${seeds[$SLURM_ARRAY_TASK_ID]}
 
+function notify_job_completion {
+    exit_status=$?
+    end_time=$(date +%s)
+    runtime=$((end_time - start_time))
+    days=$((runtime / 86400))
+    hours=$(( (runtime % 86400) / 3600 ))
+    minutes=$(( (runtime % 3600) / 60 ))
+
+    slurm_output_file="outputs/slurm-files/slurm-DQN-${SLURM_JOBID}_${SLURM_ARRAY_TASK_ID}.out"
+
+    subject="SLURM Job: ${AGENT_NAME} on ${GAME_NAME} (Seed: ${SEED})"
+    if [ $exit_status -ne 0 ]; then
+        subject="${subject} [FAILED]"
+    else
+        subject="${subject} [COMPLETED]"
+    fi
+
+    {
+        echo "Task finished at $(date)"
+        echo "Exit status: $exit_status"
+        echo "Seed: $SEED"
+        echo "Game: $GAME_NAME"
+        echo "Agent: $AGENT_NAME"
+        echo "Total runtime: ${days} days, ${hours} hours, ${minutes} minutes"
+        echo ""
+        echo "SLURM Output (${slurm_output_file}):"
+        cat "$slurm_output_file"
+    } | mail -s "$subject" o.v.guarnizocabezas@bham.ac.uk
+}
+
+# Trap both EXIT and ERR signals
+trap notify_job_completion EXIT
+
 # Execute based on the selected variant
 if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
 
