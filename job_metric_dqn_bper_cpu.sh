@@ -22,7 +22,7 @@ module load tqdm/4.66.1-GCCcore-12.3.0
 
 GAME_NAME=Alien
 AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no agent name is specified
-# CUSTOM_THREADS=14
+CUSTOM_THREADS=18
 
 # Temporary scratch space for I/O efficiency
 BB_WORKDIR=$(mktemp -d /scratch/${USER}_${SLURM_JOBID}.XXXXXX)
@@ -124,8 +124,8 @@ echo "OMP_NUM_THREADS=$OMP_NUM_THREADS"
 echo "MKL_NUM_THREADS=$MKL_NUM_THREADS"
 
 # # Set the number of threads for MKL and OMP
-# export OMP_NUM_THREADS=$CUSTOM_THREADS
-# export MKL_NUM_THREADS=$CUSTOM_THREADS
+export OMP_NUM_THREADS=$CUSTOM_THREADS
+export MKL_NUM_THREADS=$CUSTOM_THREADS
 
 # Execute based on the selected variant
 if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
