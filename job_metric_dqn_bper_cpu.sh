@@ -125,20 +125,20 @@ echo "MKL_NUM_THREADS=$MKL_NUM_THREADS"
 echo "XLA_FLAGS=$XLA_FLAGS"
 
 # # Set the number of threads for MKL and OMP
-# export OMP_NUM_THREADS=$CUSTOM_THREADS
-# export MKL_NUM_THREADS=$CUSTOM_THREADS
-# export XLA_FLAGS=--xla_cpu_multi_thread_eigen=true\ --xla_cpu_multi_thread_eigen_num_threads=$CUSTOM_THREADS
+export OMP_NUM_THREADS=$CUSTOM_THREADS
+export MKL_NUM_THREADS=$CUSTOM_THREADS
+export XLA_FLAGS=--xla_cpu_multi_thread_eigen=true\ --xla_cpu_multi_thread_eigen_num_threads=$CUSTOM_THREADS
 
 
 # Execute based on the selected variant
 if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
-
     python -m train \
         --base_dir=logs/ \
         --gin_files=dqn.gin \
         --game_name=${GAME_NAME} \
         --agent_name=${AGENT_NAME} \
-        --seed=${SEED}
+        --seed=${SEED} \
+        --gin_bindings="Runner.num_iterations = 6" # Just to check the time performance in 6 first iteration
 
 elif [ "$AGENT_NAME" == "metric_dqn_per" ]; then
     python -m train \
