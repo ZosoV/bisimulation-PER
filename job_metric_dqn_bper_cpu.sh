@@ -136,7 +136,7 @@ export MKL_NUM_THREADS=$CUSTOM_THREADS
 export OPENBLAS_NUM_THREADS=$CUSTOM_THREADS
 export NUM_INTER_THREADS=$CUSTOM_THREADS
 export NUM_INTRA_THREADS=$CUSTOM_THREADS
-export XLA_FLAGS=--xla_cpu_multi_thread_eigen=true\ --intra_op_parallelism_threads=$CUSTOM_THREADS \ --inter_op_parallelism_threads=$CUSTOM_THREADS
+export XLA_FLAGS="--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads=$CUSTOM_THREADS"
 
 
 # Execute based on the selected variant
