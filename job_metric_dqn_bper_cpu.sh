@@ -65,14 +65,17 @@ source ${VENV_PATH}/bin/activate
 PIP_CACHE_DIR="/scratch/${USER}/pip"
 
 
+# NOTE: Only execute the first time
 # Perform any required pip installations. For reasons of consistency we would recommend
 # that you define the version of the Python module – this will also ensure that if the
 # module is already installed in the virtual environment it won't be modified.
-pip install dopamine-rl
-cd baselines && pip install -e .
-cd ..
-pip install ale-py
-pip install seaborn
+# pip install dopamine-rl
+# cd baselines && pip install -e .
+# cd ..
+# pip install ale-py
+# pip install seaborn
+
+# NOTE: No jax cuda installation
 # pip uninstall -y jax jaxlib
 # pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
@@ -123,7 +126,7 @@ trap notify_job_completion EXIT
 echo "OMP_NUM_THREADS=$OMP_NUM_THREADS"
 echo "MKL_NUM_THREADS=$MKL_NUM_THREADS"
 echo "OPENBLAS_NUM_THREADS=$OPENBLAS_NUM_THREADS"
-echp "NUM_INTER_THREADS=$NUM_INTER_THREADS"
+echo "NUM_INTER_THREADS=$NUM_INTER_THREADS"
 echo "NUM_INTRA_THREADS=$NUM_INTRA_THREADS"
 echo "XLA_FLAGS=$XLA_FLAGS"
 
