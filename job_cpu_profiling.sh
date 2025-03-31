@@ -5,6 +5,7 @@
 #SBATCH --time=10-00:00:00
 #SBATCH --qos=bbdefault
 #SBATCH --mail-type=ALL
+#SBATCH --mail-user=o.v.guarnizocabezas@bham.ac.uk
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=36
 #SBATCH --mem-per-cpu=8GB

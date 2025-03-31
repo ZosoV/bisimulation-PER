@@ -5,6 +5,7 @@
 #SBATCH --time=10-00:00:00
 #SBATCH --qos=bbdefault
 #SBATCH --mail-type=ALL
+#SBATCH --mail-user=o.v.guarnizocabezas@bham.ac.uk
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=36
 #SBATCH --mem-per-cpu=8GB
@@ -142,7 +143,7 @@ export NUM_INTRA_THREADS=$CUSTOM_THREADS
 # Execute based on the selected variant
 if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
     python -m train \
-        --base_dir=logs/ \
+        --base_dir=profiling_logs/ \
         --gin_files=dqn.gin \
         --game_name=${GAME_NAME} \
         --agent_name=${AGENT_NAME} \
