@@ -2,7 +2,7 @@
 #SBATCH --job-name=bisimulation-rl-DQN-Alien
 #SBATCH --array=1
 #SBATCH --ntasks=1
-#SBATCH --time=10-00:00:00
+#SBATCH --time=5-00:00:00
 #SBATCH --qos=bbdefault
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=o.v.guarnizocabezas@bham.ac.uk
@@ -21,9 +21,11 @@ module load tqdm/4.66.1-GCCcore-12.3.0
 # module load bear-apps/2022a
 # module load wandb/0.13.6-GCC-11.3.0
 
-GAME_NAME=Alien
+GAME_NAME=${1:-Alien}  # Default to Alien if no game name is specified
 AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no agent name is specified
-CUSTOM_THREADS=18
+# CUSTOM_THREADS=18
+echo "Game name: $GAME_NAME"
+echo "Agent name: $AGENT_NAME"
 
 # Temporary scratch space for I/O efficiency
 BB_WORKDIR=$(mktemp -d /scratch/${USER}_${SLURM_JOBID}.XXXXXX)
@@ -132,23 +134,23 @@ echo "NUM_INTRA_THREADS=$NUM_INTRA_THREADS"
 echo "XLA_FLAGS=$XLA_FLAGS"
 
 # # Set the number of threads for MKL and OMP
-export OMP_NUM_THREADS=$CUSTOM_THREADS
-export MKL_NUM_THREADS=$CUSTOM_THREADS
-export OPENBLAS_NUM_THREADS=$CUSTOM_THREADS
-export NUM_INTER_THREADS=$CUSTOM_THREADS
-export NUM_INTRA_THREADS=$CUSTOM_THREADS
-export XLA_FLAGS="--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads=$CUSTOM_THREADS"
+# export OMP_NUM_THREADS=$CUSTOM_THREADS
+# export MKL_NUM_THREADS=$CUSTOM_THREADS
+# export OPENBLAS_NUM_THREADS=$CUSTOM_THREADS
+# export NUM_INTER_THREADS=$CUSTOM_THREADS
+# export NUM_INTRA_THREADS=$CUSTOM_THREADS
+# export XLA_FLAGS="--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads=$CUSTOM_THREADS"
 
 
 # Execute based on the selected variant
 if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
     python -m train \
-        --base_dir=profiling_logs/ \
+        --base_dir=logs/ \
         --gin_files=dqn.gin \
         --game_name=${GAME_NAME} \
         --agent_name=${AGENT_NAME} \
-        --seed=${SEED} \
-        --gin_bindings="Runner.num_iterations = 6" # Just to check the time performance in 6 first iteration
+        --seed=${SEED} #\
+        # --gin_bindings="Runner.num_iterations = 6" # Just to check the time performance in 6 first iteration
 
 elif [ "$AGENT_NAME" == "metric_dqn_per" ]; then
     python -m train \
