@@ -8,7 +8,7 @@
 #SBATCH --qos=bbgpu
 #SBATCH --cpus-per-task=14
 #SBATCH --account=giacobbm-bisimulation-rl
-#SBATCH --gres=gpu:a30:1
+#SBATCH --gres=gpu:a100:1
 #SBATCH --output="outputs/slurm-files/slurm-DQN-%A_%a.out"
 
 module purge; module load bluebear
@@ -20,9 +20,11 @@ module load tqdm/4.66.1-GCCcore-12.3.0
 # module load bear-apps/2022a
 # module load wandb/0.13.6-GCC-11.3.0
 
-GAME_NAME=Alien
+GAME_NAME=${1:-Alien}  # Default to Alien if no game name is specified
 AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no agent name is specified
-# CUSTOM_THREADS=14
+# CUSTOM_THREADS=18
+echo "Game name: $GAME_NAME"
+echo "Agent name: $AGENT_NAME"
 
 # Temporary scratch space for I/O efficiency
 BB_WORKDIR=$(mktemp -d /scratch/${USER}_${SLURM_JOBID}.XXXXXX)
@@ -68,13 +70,13 @@ PIP_CACHE_DIR="/scratch/${USER}/pip"
 # Perform any required pip installations. For reasons of consistency we would recommend
 # that you define the version of the Python module – this will also ensure that if the
 # module is already installed in the virtual environment it won't be modified.
-pip install dopamine-rl
-cd baselines && pip install -e .
-cd ..
-pip install ale-py
-pip install seaborn
-pip uninstall -y jax jaxlib
-pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+# pip install dopamine-rl
+# cd baselines && pip install -e .
+# cd ..
+# pip install ale-py
+# pip install seaborn
+# pip uninstall -y jax jaxlib
+# pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 seeds=(118398 919409 711872 442081 189061)
 
@@ -122,6 +124,10 @@ trap notify_job_completion EXIT
 # Print current OMP_NUM_THREADS and MKL_NUM_THREADS
 echo "OMP_NUM_THREADS=$OMP_NUM_THREADS"
 echo "MKL_NUM_THREADS=$MKL_NUM_THREADS"
+echo "OPENBLAS_NUM_THREADS=$OPENBLAS_NUM_THREADS"
+echo "NUM_INTER_THREADS=$NUM_INTER_THREADS"
+echo "NUM_INTRA_THREADS=$NUM_INTRA_THREADS"
+echo "XLA_FLAGS=$XLA_FLAGS"
 
 # # Set the number of threads for MKL and OMP
 # export OMP_NUM_THREADS=$CUSTOM_THREADS
