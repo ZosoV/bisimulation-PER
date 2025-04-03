@@ -117,8 +117,8 @@ function notify_job_completion {
         echo "Agent: $AGENT_NAME"
         echo "Total runtime: ${days} days, ${hours} hours, ${minutes} minutes"
         echo ""
-        echo "SLURM Output (${slurm_output_file}):"
-        cat "$slurm_output_file"
+        # echo "SLURM Output (${slurm_output_file}):"
+        # cat "$slurm_output_file"
     } | mail -s "$subject" o.v.guarnizocabezas@bham.ac.uk
 }
 
