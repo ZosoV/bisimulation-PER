@@ -11,10 +11,16 @@
 #SBATCH --gres=gpu:a100:1
 #SBATCH --output="outputs/slurm-files/slurm-DQN-%A_%a.out"
 
-module purge; module load bluebear
-module load bear-apps/2023a
-module load Python/3.11.3-GCCcore-12.3.0
-module load tqdm/4.66.1-GCCcore-12.3.0
+# module purge; module load bluebear
+# module load bear-apps/2023a
+# module load Python/3.11.3-GCCcore-12.3.0
+# module load tqdm/4.66.1-GCCcore-12.3.0
+
+module load bear-apps/2022a
+module load Python/3.10.4-GCCcore-11.3.0
+module load tqdm/4.64.0-GCCcore-11.3.0
+module load TensorFlow/2.11.0-foss-2022a-CUDA-11.7.0
+module load jax/0.4.4-foss-2022a-CUDA-11.7.0
 # module load PyTorch/2.1.2-foss-2023a-CUDA-12.1.1
 # module load torchvision/0.16.0-foss-2023a-CUDA-12.1.1
 # module load bear-apps/2022a
@@ -70,11 +76,11 @@ PIP_CACHE_DIR="/scratch/${USER}/pip"
 # Perform any required pip installations. For reasons of consistency we would recommend
 # that you define the version of the Python module – this will also ensure that if the
 # module is already installed in the virtual environment it won't be modified.
-# pip install dopamine-rl
-# cd baselines && pip install -e .
-# cd ..
-# pip install ale-py
-# pip install seaborn
+pip install dopamine-rl
+cd baselines && pip install -e .
+cd ..
+pip install ale-py
+pip install seaborn
 # pip uninstall -y jax jaxlib
 # pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
