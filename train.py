@@ -147,7 +147,7 @@ def main(unused_argv):
   run_experiment.load_gin_configs(gin_files, gin_bindings + addition_bindings)
   
 
-  LOG_PATH = os.path.join(base_dir, FLAGS.agent_name, FLAGS.game_name, FLAGS.seed)
+  LOG_PATH = os.path.join(base_dir, FLAGS.game_name, FLAGS.agent_name, FLAGS.seed)
   print(f"LOG_PATH: {LOG_PATH}")
   runner = run_experiment.TrainRunner(LOG_PATH, create_metric_agent)
   runner.run_experiment()
