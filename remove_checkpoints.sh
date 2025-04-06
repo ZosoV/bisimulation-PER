@@ -1,1 +1,0 @@
-# Create an script to remove the checkpoints
