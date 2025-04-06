@@ -16,6 +16,7 @@
 # module load Python/3.11.3-GCCcore-12.3.0
 # module load tqdm/4.66.1-GCCcore-12.3.0
 
+module purge; module load bluebear
 module load bear-apps/2022a
 module load Python/3.10.4-GCCcore-11.3.0
 module load tqdm/4.64.0-GCCcore-11.3.0
