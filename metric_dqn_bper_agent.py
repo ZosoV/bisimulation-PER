@@ -79,6 +79,13 @@ def train(network_def, online_params, target_params, optimizer, optimizer_state,
     q_values = jnp.squeeze(q_values)
     representations = model_output.representation
     representations = jnp.squeeze(representations)
+
+    # NOTE: target online representation
+    # NOTE: I can try to use this instead of target_next_r
+    # tmp_model_output = jax.vmap(q_online)(next_states)
+    # online_next_r = tmp_model_output.representation
+    # online_next_r = jnp.squeeze(online_next_r)
+
     replay_chosen_q = jax.vmap(lambda x, y: x[y])(q_values, actions)
     batch_bellman_loss = jax.vmap(losses.mse_loss)(bellman_target,
                                                       replay_chosen_q)
@@ -94,11 +101,12 @@ def train(network_def, online_params, target_params, optimizer, optimizer_state,
     
     # Current vs Next Distance without squarify
     # NOTE: I could try to use online next representation instead of target_next_r
-    # NOTE: when bper_weight we are using PER and we don't need to compute the experience distance
+    # NOTE: when bper_weight = 0 we are using PER and we don't need to compute the experience distance
+    
     if bper_weight > 0:
       experience_distances = metric_utils.current_next_distances(
         current_state_representations=representations,
-        next_state_representations=target_next_r,
+        next_state_representations=target_next_r, # online_next_r,
         distance_fn = distance_fn,)
     else:
       experience_distances = jnp.zeros_like(batch_bellman_loss)
@@ -149,9 +157,16 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                distance_fn=metric_utils.cosine_distance,
                replay_scheme='uniform',
                bper_weight=0, # PER: 0 and BPER: 1
+              #  alpha=0.99, # Smoothing factor for EWA
                ):
     self._mico_weight = mico_weight
     self._distance_fn = distance_fn
+
+    # NOTE: parameters for normalizing the experience distances
+    # self.ewa_sum = 0.0
+    # self.ewa_ssq = 0.0
+    # self.ewa_count = 0
+    # self.alpha = alpha
     
     network = AtariDQNNetwork
     super().__init__(num_actions, network=network,
@@ -204,6 +219,22 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
         transition_accumulator=transition_accumulator,
         sampling_distribution=sampling_distribution,
     )
+
+  # def _normalize_experience_distances(self, experience_distances):
+  #     """
+  #     Normalize experience distances using exponential weighted average (EWA).
+  #     """
+  #     # Compute the current mean and std of the experience distances
+  #     current_mean = jnp.mean(experience_distances)
+  #     current_std = jnp.std(experience_distances)
+
+  #     # Update EWA mean and std
+  #     self.ewa_mean = self.alpha * current_mean + (1 - self.alpha) * self.ewa_mean
+  #     self.ewa_std = self.alpha * current_std + (1 - self.alpha) * self.ewa_std
+
+  #     # Normalize the experience distances
+  #     normalized_distances = (experience_distances - self.ewa_mean) / (self.ewa_std + 1e-10)
+  #     return normalized_distances
 
   def _train_step(self):
     """Runs a single training step."""
@@ -260,7 +291,12 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
           # NOTE: Option we can in the same way as the loss weights, use the sqrt of the
           # experience distance.
           # priorities = (1 - self._bper_weight) * jnp.sqrt(loss + 1e-10) + self._bper_weight * jnp.sqrt(experience_distances + 1e-10)
-          priorities = (1 - self._bper_weight) * jnp.sqrt(batch_bellman_loss + 1e-10) + self._bper_weight * experience_distances
+          
+          # normalized_experience_distances = self._normalize_experience_distances(experience_distances)
+          normalized_experience_distances = experience_distances / jnp.sqrt(512)
+          
+          batch_td_error = jnp.sqrt(batch_bellman_loss + 1e-10)
+          priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * normalized_experience_distances # experience_distances
 
           self._replay.update(
               self.replay_elements['indices'],
@@ -280,6 +316,19 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
         #   ])
         #   self.summary_writer.add_summary(summary, self.training_steps)
             with self.summary_writer.as_default():
+
+                # NOTE: When I already have a well chose strategy for the experience distance
+                # I can comment this part
+                # Log the statistics as scalars
+                tf.summary.scalar('Priority/TDPriority_Mean', jnp.mean(batch_td_error), step=self.training_steps)
+                tf.summary.scalar('Priority/TDPriority_Std', jnp.std(batch_td_error), step=self.training_steps)
+                tf.summary.scalar('Priority/ExperienceDistance_Mean', jnp.mean(experience_distances), step=self.training_steps)
+                tf.summary.scalar('Priority/ExperienceDistance_Std', jnp.std(experience_distances), step=self.training_steps)
+
+                # Log the tensors as histograms
+                tf.summary.histogram('Priority/TDPriority', batch_td_error, step=self.training_steps)
+                tf.summary.histogram('Priority/ExperienceDistance', experience_distances, step=self.training_steps)
+                
                 tf.summary.scalar('Losses/Aggregate', loss, step=self.training_steps)
                 tf.summary.scalar('Losses/Bellman', bellman_loss, step=self.training_steps)
                 tf.summary.scalar('Losses/Metric', metric_loss, step=self.training_steps)

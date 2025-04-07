@@ -29,7 +29,7 @@ set -x
 # source ./bin/activate
 
 # pip install -r mico/requirements.txt
-GAME_NAME='Alien'
+GAME_NAME='FishingDerby'
 AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no agent name is specified
 
 seeds=(118398 919409 711872 442081 189061)
