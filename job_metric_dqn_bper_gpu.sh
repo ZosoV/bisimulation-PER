@@ -6,7 +6,7 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=o.v.guarnizocabezas@bham.ac.uk
 #SBATCH --qos=bbgpu
-#SBATCH --cpus-per-task=28
+#SBATCH --cpus-per-task=14
 #SBATCH --account=giacobbm-bisimulation-rl
 #SBATCH --gres=gpu:a30:1
 #SBATCH --output="outputs/slurm-files/slurm-DQN-%A_%a.out"
@@ -14,7 +14,7 @@
 module purge; module load bluebear
 module load bear-apps/2023a
 module load Python/3.11.3-GCCcore-12.3.0
-module load CUDA/12.1.1
+# module load CUDA/12.1.1
 module load cuDNN/8.9.2.26-CUDA-12.1.1
 
 
@@ -30,6 +30,9 @@ module load cuDNN/8.9.2.26-CUDA-12.1.1
 # module load torchvision/0.16.0-foss-2023a-CUDA-12.1.1
 # module load bear-apps/2022a
 # module load wandb/0.13.6-GCC-11.3.0
+
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+export XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
 
 GAME_NAME=${1:-Alien}  # Default to Alien if no game name is specified
 AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no agent name is specified
