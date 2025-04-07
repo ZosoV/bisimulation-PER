@@ -14,6 +14,7 @@
 module purge; module load bluebear
 module load bear-apps/2023a
 module load Python/3.11.3-GCCcore-12.3.0
+module load CUDA/12.1.1
 module load cuDNN/8.9.2.26-CUDA-12.1.1
 
 
