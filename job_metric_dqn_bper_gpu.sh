@@ -78,15 +78,16 @@ PIP_CACHE_DIR="/scratch/${USER}/pip"
 # that you define the version of the Python module – this will also ensure that if the
 # module is already installed in the virtual environment it won't be modified.
 pip install dopamine-rl
-cd baselines && pip install -e .
-cd ..
+# cd baselines && pip install -e .
+# cd ..
 pip install ale-py
 pip install seaborn
 pip install tqdm
 pip uninstall -y jax jaxlib
-pip install jax==0.4.9
-pip install --upgrade "jaxlib==0.4.9+cuda11.cudnn86" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+# pip install jax==0.4.9
+# pip install --upgrade "jaxlib==0.4.9+cuda11.cudnn86" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 # pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install --upgrade "jax[cuda11_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 seeds=(118398 919409 711872 442081 189061)
 
