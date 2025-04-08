@@ -31,9 +31,6 @@ module load cuDNN/8.9.2.26-CUDA-12.1.1
 # module load bear-apps/2022a
 # module load wandb/0.13.6-GCC-11.3.0
 
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-export XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
-
 GAME_NAME=${1:-Alien}  # Default to Alien if no game name is specified
 AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no agent name is specified
 # CUSTOM_THREADS=18
