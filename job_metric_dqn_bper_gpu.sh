@@ -14,7 +14,6 @@
 module purge; module load bluebear
 module load bear-apps/2023a
 module load Python/3.11.3-GCCcore-12.3.0
-# module load CUDA/12.1.1
 module load cuDNN/8.9.2.26-CUDA-12.1.1
 
 
@@ -82,15 +81,15 @@ PIP_CACHE_DIR="/scratch/${USER}/pip"
 # that you define the version of the Python module – this will also ensure that if the
 # module is already installed in the virtual environment it won't be modified.
 # python3 -m pip install --no-cache-dir --upgrade pip
-pip install dopamine-rl
-python3 -m pip install 'tensorflow[and-cuda]'
-cd baselines && pip install -e .
-cd ..
-pip install ale-py
-pip install seaborn
-pip install tqdm
-# pip uninstall -y jax jaxlib
-# pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+# pip install dopamine-rl
+# python3 -m pip install 'tensorflow[and-cuda]'
+# cd baselines && pip install -e .
+# cd ..
+# pip install ale-py
+# pip install seaborn
+# pip install tqdm
+pip uninstall -y jax jaxlib
+pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 seeds=(118398 919409 711872 442081 189061)
 
