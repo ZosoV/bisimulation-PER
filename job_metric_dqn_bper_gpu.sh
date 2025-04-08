@@ -81,7 +81,7 @@ PIP_CACHE_DIR="/scratch/${USER}/pip"
 # Perform any required pip installations. For reasons of consistency we would recommend
 # that you define the version of the Python module – this will also ensure that if the
 # module is already installed in the virtual environment it won't be modified.
-python3 -m pip install --no-cache-dir --upgrade pip
+# python3 -m pip install --no-cache-dir --upgrade pip
 pip install dopamine-rl
 python3 -m pip install 'tensorflow[and-cuda]'
 cd baselines && pip install -e .
