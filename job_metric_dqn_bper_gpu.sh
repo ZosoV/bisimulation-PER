@@ -61,7 +61,7 @@ set -e
 
 PROJECT_DIR="/rds/projects/g/giacobbm-bisimulation-rl"
 export VENV_DIR="${PROJECT_DIR}/virtual-environments"
-export VENV_PATH="${VENV_DIR}/dopamine-gpu-virtual-env-${BB_CPU}"
+export VENV_PATH="${VENV_DIR}/dopamine-gpu2-virtual-env-${BB_CPU}"
 
 # Create a master venv directory if necessary
 mkdir -p ${VENV_DIR}
