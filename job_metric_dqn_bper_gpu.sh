@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=bisimulation-rl-DQN-Alien
-#SBATCH --array=1
+#SBATCH --array=0
 #SBATCH --ntasks=1
 #SBATCH --time=5-00:00:00
 #SBATCH --mail-type=ALL
@@ -88,8 +88,8 @@ PIP_CACHE_DIR="/scratch/${USER}/pip"
 # pip install ale-py
 # pip install seaborn
 # pip install tqdm
-pip uninstall -y jax jaxlib
-pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+# pip uninstall -y jax jaxlib
+# pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 seeds=(118398 919409 711872 442081 189061)
 
