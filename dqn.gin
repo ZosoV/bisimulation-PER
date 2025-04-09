@@ -37,5 +37,6 @@ Runner.training_steps = 250_000  # agent steps
 Runner.max_steps_per_episode = 27_000  # agent steps
 
 ReplayBuffer.max_capacity = 1_000_000
+ReplayBuffer.checkpoint_duration = 2
 PrioritizedSamplingDistribution.max_capacity = 1_000_000
 ReplayBuffer.batch_size = 32
