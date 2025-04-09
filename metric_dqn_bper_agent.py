@@ -293,10 +293,10 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
           # priorities = (1 - self._bper_weight) * jnp.sqrt(loss + 1e-10) + self._bper_weight * jnp.sqrt(experience_distances + 1e-10)
           
           # normalized_experience_distances = self._normalize_experience_distances(experience_distances)
-          normalized_experience_distances = experience_distances / jnp.sqrt(512)
+          experience_distances = experience_distances / jnp.sqrt(512)
           
           batch_td_error = jnp.sqrt(batch_bellman_loss + 1e-10)
-          priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * normalized_experience_distances # experience_distances
+          priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
 
           self._replay.update(
               self.replay_elements['indices'],
