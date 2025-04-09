@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=bisimulation-rl-DQN
-#SBATCH --array=0-2
+#SBATCH --array=1-2
 #SBATCH --ntasks=1
 #SBATCH --time=3-00:00:00
 #SBATCH --mail-type=ALL
