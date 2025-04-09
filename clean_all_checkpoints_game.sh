@@ -6,9 +6,24 @@ if [ -z "$1" ] || [ ! -d "$1" ]; then
 fi
 
 # Find all checkpoints directories
+echo "The following checkpoints directories will be processed:"
+echo "------------------------------------------------------"
+find "$1" -type d -name "checkpoints" | while read -r checkpoint_dir; do
+    echo "$checkpoint_dir"
+done
+echo "------------------------------------------------------"
+
+# Ask for confirmation
+read -p "Do you want to proceed with cleaning these directories? [y/N] " -n 1 -r
+echo    # move to a new line
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Operation cancelled."
+    exit 0
+fi
+
+# Process each directory
 find "$1" -type d -name "checkpoints" | while read -r checkpoint_dir; do
     echo "Processing: $checkpoint_dir"
-    # Call your original script for each checkpoints directory
     bash clean_checkpoints.sh "$checkpoint_dir"
 done
 
