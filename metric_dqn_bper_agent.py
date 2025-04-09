@@ -188,6 +188,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     logging.info('\t distance_fn: %s', self._distance_fn)
     logging.info('\t replay_scheme: %s', self._replay_scheme)
     logging.info('\t bper_weight: %f', bper_weight)
+    logging.info('\t method_scheme: %s', self._method_scheme)
     logging.info('\t gamma: %f', self.gamma)
     logging.info('\t update_horizon: %f', self.update_horizon)
     logging.info('\t min_replay_history: %d', self.min_replay_history)
@@ -295,9 +296,9 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
           # priorities = (1 - self._bper_weight) * jnp.sqrt(loss + 1e-10) + self._bper_weight * jnp.sqrt(experience_distances + 1e-10)
           
           # normalized_experience_distances = self._normalize_experience_distances(experience_distances)
+          batch_td_error = jnp.sqrt(batch_bellman_loss + 1e-10)
           if self._method_scheme == 'scaling':
             experience_distances = experience_distances / jnp.sqrt(512)         
-            batch_td_error = jnp.sqrt(batch_bellman_loss + 1e-10)
             priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
           elif self._method_scheme == 'softmax_weight':
             # IDEA 1: Experimental method: Reweighing the priorities based on the experience distances

@@ -105,7 +105,9 @@ def create_metric_agent(sess, environment, agent_name='metric_dqn',
   elif agent_name == 'metric_dqn':
     return metric_dqn_agent.MetricDQNAgent(
         num_actions=environment.action_space.n, summary_writer=summary_writer)
-  elif agent_name == 'metric_dqn_bper' or agent_name == 'metric_dqn_per':
+  elif ( agent_name == 'metric_dqn_bper' or agent_name == 'metric_dqn_per' \
+      or agent_name == 'metric_dqn_bper_scaling' or agent_name == 'metric_dqn_bper_softmax' or \
+       agent_name == 'metric_dqn_bper_softmax_weight' ):
     return metric_dqn_bper_agent.MetricDQNBPERAgent(
         num_actions=environment.action_space.n, summary_writer=summary_writer)
   elif agent_name == 'metric_c51' or agent_name == 'metric_rainbow':

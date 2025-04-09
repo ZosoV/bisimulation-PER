@@ -32,6 +32,8 @@ module load cuDNN/8.9.2.26-CUDA-12.1.1
 
 GAME_NAME=${1:-Alien}  # Default to Alien if no game name is specified
 AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no agent name is specified
+# BPER_SCHEME=${BPER_SCHEME:-"scaling"}  # Default to softmax if no BPER scheme is specified
+
 # CUSTOM_THREADS=18
 echo "Game name: $GAME_NAME"
 echo "Agent name: $AGENT_NAME"
@@ -154,7 +156,8 @@ if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
         --gin_files=dqn.gin \
         --game_name=${GAME_NAME} \
         --agent_name=${AGENT_NAME} \
-        --seed=${SEED}
+        --seed=${SEED} #\
+        # --gin_bindings="MetricDQNBPERAgent.method_scheme='${BPER_SCHEME}'"
 
 elif [ "$AGENT_NAME" == "metric_dqn_per" ]; then
     python -m train \

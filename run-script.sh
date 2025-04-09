@@ -29,8 +29,9 @@ set -x
 # source ./bin/activate
 
 # pip install -r mico/requirements.txt
-GAME_NAME='FishingDerby'
+GAME_NAME=${1:-"Alien"}  #
 AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no agent name is specified
+BPER_SCHEME=${BPER_SCHEME:-"softmax_weight"}  # Default to softmax if no BPER scheme is specified
 
 seeds=(118398 919409 711872 442081 189061)
 SLURM_ARRAY_TASK_ID=0
@@ -73,13 +74,13 @@ trap notify_job_completion EXIT
 
 # Execute based on the selected variant
 if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
-
     python -m train \
         --base_dir=logs/ \
         --gin_files=dqn.gin \
         --game_name=${GAME_NAME} \
-        --agent_name=${AGENT_NAME} \
-        --seed=${SEED}
+        --agent_name="${AGENT_NAME}_${BPER_SCHEME}" \
+        --seed=${SEED} \
+        --gin_bindings="MetricDQNBPERAgent.method_scheme='${BPER_SCHEME}'"
 
 elif [ "$AGENT_NAME" == "metric_dqn_per" ]; then
     python -m train \
