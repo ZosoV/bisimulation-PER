@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=bisimulation-rl-DQN-Alien
+#SBATCH --job-name=bisimulation-rl-DQN
 #SBATCH --array=0-2
 #SBATCH --ntasks=1
 #SBATCH --time=4-00:00:00
@@ -9,6 +9,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=36
 #SBATCH --mem-per-cpu=8GB
+#SBATCH --account=giacobbm-bisimulation-rl
 #SBATCH --output="outputs/slurm-files/slurm-DQN-%A_%a.out"
 #SBATCH --constraint=sapphire
 
