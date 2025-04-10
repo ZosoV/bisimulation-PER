@@ -104,7 +104,7 @@ function notify_job_completion {
 
     slurm_output_file="outputs/slurm-files/slurm-DQN-${SLURM_JOBID}_${SLURM_ARRAY_TASK_ID}.out"
 
-    subject="SLURM Job: ${AGENT_NAME} on ${GAME_NAME} (Seed: ${SEED})"
+    subject="Slurm Array Job: ${AGENT_NAME} on ${GAME_NAME} (Seed: ${SEED})"
     if [ $exit_status -ne 0 ]; then
         subject="${subject} [FAILED]"
     else

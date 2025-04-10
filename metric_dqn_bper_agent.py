@@ -299,7 +299,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
           # NOTE: check if scaling before softmax makes sense in this case?
           # I think the answer is yes
           batch_td_error = jnp.sqrt(batch_bellman_loss + 1e-10)
-          experience_distances = experience_distances / jnp.sqrt(512)        
+          experience_distances = experience_distances / jnp.sqrt(512) # 512 is the size of the representation        
           if self._method_scheme == 'scaling':
             priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
           elif self._method_scheme == 'softmax_weight':
