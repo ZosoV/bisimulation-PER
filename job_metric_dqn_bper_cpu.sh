@@ -27,6 +27,7 @@ AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no ag
 # CUSTOM_THREADS=18
 echo "Game name: $GAME_NAME"
 echo "Agent name: $AGENT_NAME"
+BPER_SCHEME=${BPER_SCHEME:-"scaling"}  # Default to softmax if no BPER scheme is specified
 
 # Temporary scratch space for I/O efficiency
 BB_WORKDIR=$(mktemp -d /scratch/${USER}_${SLURM_JOBID}.XXXXXX)
@@ -150,9 +151,9 @@ if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
         --gin_files=dqn.gin \
         --game_name=${GAME_NAME} \
         --agent_name=${AGENT_NAME} \
-        --seed=${SEED} #\
-        # --gin_bindings="Runner.num_iterations = 6" # Just to check the time performance in 6 first iteration
-
+        --seed=${SEED} \
+        --gin_bindings="MetricDQNBPERAgent.method_scheme='${BPER_SCHEME}'"
+        
 elif [ "$AGENT_NAME" == "metric_dqn_per" ]; then
     python -m train \
         --base_dir=logs/ \
