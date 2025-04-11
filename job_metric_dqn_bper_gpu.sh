@@ -2,7 +2,7 @@
 #SBATCH --job-name=bisimulation-rl-DQN
 #SBATCH --array=0-2
 #SBATCH --ntasks=1
-#SBATCH --time=3-00:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=o.v.guarnizocabezas@bham.ac.uk
 #SBATCH --qos=bbgpu
@@ -130,7 +130,7 @@ function notify_job_completion {
         echo ""
         # echo "SLURM Output (${slurm_output_file}):"
         # cat "$slurm_output_file"
-    } | mail -s "$subject" o.v.guarnizocabezas@bham.ac.uk
+    } | mailx -s "$subject" o.v.guarnizocabezas@bham.ac.uk
 }
 
 # Trap both EXIT and ERR signals
@@ -184,31 +184,6 @@ else
 fi
 
 echo "Completed task with seed $SEED at $(date)"
-
-# Removing extra checkpoints
-# echo "Removing extra checkpoints"
-# CHECKPOINTS_DIR="logs/${GAME_NAME}/${AGENT_NAME}/${SEED}/checkpoints"
-
-# if [ -n "${CHECKPOINTS_DIR}" ] && [ -d "${CHECKPOINTS_DIR}" ]; then
-#     # Change to the directory and get the latest numbered directory
-#     cd "${CHECKPOINTS_DIR}" && latest=$(ls -d [0-9]* 2>/dev/null | sort -n | tail -1)
-
-#     if [ -z "$latest" ]; then
-#         echo "No numbered directories found in ${CHECKPOINTS_DIR}"
-#         exit 1
-#     fi
-
-#     echo "Keeping: $latest"
-#     echo "Will delete:"
-#     # List files that will be deleted (dry run)
-#     ls | grep -v "^$latest$" | grep -v "sentinel_checkpoint_complete.$latest" | grep -v "ckpt.$latest"
-#     # Actually delete the files
-#     ls | grep -v "^$latest$" | grep -v "sentinel_checkpoint_complete.$latest" | grep -v "ckpt.$latest" | xargs rm -rf
-# else
-#     echo "Usage: $0 <directory>"
-#     echo "Directory must exist"
-#     exit 1
-# fi
 
 # Cleanup
 # sleep 300  # 5-minute buffer

@@ -3,6 +3,8 @@ baselines/
 dopamine_logs/
 logs/
 outputs/
+atari_100k/logs/
+atari_100k/outputs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
