@@ -303,12 +303,14 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
           if self._method_scheme == 'scaling':
             priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
           elif self._method_scheme == 'softmax_weight':
+            experience_distances = jax.nn.softmax(experience_distances)
             # NOTE: probably in this cases instead of adding 1e-10 I should sent to -inf very small distances
             # IDEA 1: Experimental method: Reweighing the priorities based on the experience distances
-            priorities = batch_td_error * jax.nn.softmax(experience_distances)
+            priorities = batch_td_error * experience_distances
           elif self._method_scheme == 'softmax':
+            experience_distances = jax.nn.softmax(experience_distances)
             # IDEA 2: Assigning the priorities relative to the softmax of the experience distances in the batch
-            priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * jax.nn.softmax(experience_distances) # experience_distances
+            priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
 
           # IDEA 3: Exponential weighted average
 
