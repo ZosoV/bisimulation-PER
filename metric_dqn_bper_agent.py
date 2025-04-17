@@ -313,6 +313,8 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
             priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
 
           # IDEA 3: Exponential weighted average
+          # elif self._method_scheme == 'exponential_weighted':
+
 
 
 
