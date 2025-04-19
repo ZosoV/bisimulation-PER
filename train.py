@@ -51,7 +51,7 @@ flags.DEFINE_string('agent_name', "metric_dqn_bper",
 flags.DEFINE_string('seed', "0",
                     'Random seed to use for the experiment.')
 flags.DEFINE_multi_string(
-    'gin_files', ["dqn_profiling.gin"], 'List of paths to gin configuration files.')
+    'gin_files', ["dqn.gin"], 'List of paths to gin configuration files.')
 flags.DEFINE_multi_string(
     'gin_bindings', [],
     'Gin bindings to override the values set in the config files.')
@@ -107,7 +107,7 @@ def create_metric_agent(sess, environment, agent_name='metric_dqn',
         num_actions=environment.action_space.n, summary_writer=summary_writer)
   elif ( agent_name == 'metric_dqn_bper' or agent_name == 'metric_dqn_per' \
       or agent_name == 'metric_dqn_bper_scaling' or agent_name == 'metric_dqn_bper_softmax' or \
-       agent_name == 'metric_dqn_bper_softmax_weight' ):
+       agent_name == 'metric_dqn_bper_softmax_weight' or agent_name == 'metric_dqn_bper_exponential_norm'):
     return metric_dqn_bper_agent.MetricDQNBPERAgent(
         num_actions=environment.action_space.n, summary_writer=summary_writer)
   elif agent_name == 'metric_c51' or agent_name == 'metric_rainbow':

@@ -133,3 +133,64 @@ def current_next_distances(
                           jnp.sum(jnp.square(next_state_representations), -1))
 
     return norm_average + beta * base_distances
+
+@gin.configurable
+class ExponentialNormalizer(object):
+    def __init__(self, decay=0.99):
+        self._decay: float = decay
+        self._running_sum: jnp.ndarray = jnp.zeros(1)
+        self._running_sqsum: jnp.ndarray = jnp.zeros(1)
+        self._running_count: jnp.ndarray = jnp.zeros(1)
+        self._running_min: jnp.ndarray = jnp.array(float('inf'))  # Track min
+        self._initialized: bool = False
+        self._eps: float = 1e-10
+    
+    def normalize(self, x, update_stats=True):
+        """Normalize input and optionally update running statistics"""
+        # It needs to be first to set the values in the first batch
+        if update_stats:
+            self.update(x)
+
+        # Calculate current mean and std
+        mean, std = self.current_stats()
+        
+        # Normalize the input
+        normalized = (x - mean) / jnp.maximum(std, self._eps)
+        # Shift to positive range
+        if update_stats:
+            # Chose between the minimum of the running minimum and the minimum of the batch
+            # to avoid negative values
+            self._running_min = jnp.minimum(self._running_min, jnp.min(normalized))
+        
+        # If the minimum is positive, we don't need to shift
+        normalized = normalized - self._running_min + self._eps if self._running_min < 0 else normalized
+        return normalized
+    
+    def current_stats(self):
+        """Get current mean and standard deviation"""
+        mean = self._running_sum / self._running_count
+        var = (self._running_sqsum / self._running_count) - mean**2
+        std = jnp.sqrt(jnp.maximum(var, self._eps))
+        return mean, std
+    
+    def update(self, x):
+        """Update running statistics"""
+        batch_sum = jnp.sum(x)
+        batch_sqsum = jnp.sum(x**2)
+        batch_count = jnp.array(x.size, dtype=jnp.float32)
+        
+        if not self._initialized:
+            # Initialize on first update
+            self._running_sum = batch_sum
+            self._running_sqsum = batch_sqsum
+            self._running_count = batch_count
+            self._initialized = True
+        else:
+            # Exponential moving average update
+            new_sum = self._decay * self._running_sum + batch_sum
+            new_sqsum = self._decay * self._running_sqsum + batch_sqsum
+            new_count = self._decay * self._running_count + batch_count
+
+            self._running_sum = new_sum
+            self._running_sqsum = new_sqsum
+            self._running_count = new_count

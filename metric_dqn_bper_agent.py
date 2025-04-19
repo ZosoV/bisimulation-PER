@@ -145,7 +145,6 @@ def target_outputs(target_network, states, next_states, rewards, terminals,
       jax.lax.stop_gradient(curr_state_representation),
       jax.lax.stop_gradient(next_state_representation))
 
-
 @gin.configurable
 class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
   """DQN Agent with the MICo loss."""
@@ -164,11 +163,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     self._distance_fn = distance_fn
     self._method_scheme = method_scheme
 
-    # NOTE: parameters for normalizing the experience distances
-    # self.ewa_sum = 0.0
-    # self.ewa_ssq = 0.0
-    # self.ewa_count = 0
-    # self.alpha = alpha
+    self._exponential_normalizer = metric_utils.ExponentialNormalizer()
     
     network = AtariDQNNetwork
     super().__init__(num_actions, network=network,
@@ -222,22 +217,6 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
         transition_accumulator=transition_accumulator,
         sampling_distribution=sampling_distribution,
     )
-
-  # def _normalize_experience_distances(self, experience_distances):
-  #     """
-  #     Normalize experience distances using exponential weighted average (EWA).
-  #     """
-  #     # Compute the current mean and std of the experience distances
-  #     current_mean = jnp.mean(experience_distances)
-  #     current_std = jnp.std(experience_distances)
-
-  #     # Update EWA mean and std
-  #     self.ewa_mean = self.alpha * current_mean + (1 - self.alpha) * self.ewa_mean
-  #     self.ewa_std = self.alpha * current_std + (1 - self.alpha) * self.ewa_std
-
-  #     # Normalize the experience distances
-  #     normalized_distances = (experience_distances - self.ewa_mean) / (self.ewa_std + 1e-10)
-  #     return normalized_distances
 
   def _train_step(self):
     """Runs a single training step."""
@@ -295,28 +274,24 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
           # experience distance.
           # priorities = (1 - self._bper_weight) * jnp.sqrt(loss + 1e-10) + self._bper_weight * jnp.sqrt(experience_distances + 1e-10)
           
-          # normalized_experience_distances = self._normalize_experience_distances(experience_distances)
-          # NOTE: check if scaling before softmax makes sense in this case?
-          # I think the answer is yes
           batch_td_error = jnp.sqrt(batch_bellman_loss + 1e-10)
-          experience_distances = experience_distances / jnp.sqrt(512) # 512 is the size of the representation        
-          if self._method_scheme == 'scaling':
-            priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
-          elif self._method_scheme == 'softmax_weight':
-            experience_distances = jax.nn.softmax(experience_distances)
-            # NOTE: probably in this cases instead of adding 1e-10 I should sent to -inf very small distances
-            # IDEA 1: Experimental method: Reweighing the priorities based on the experience distances
-            priorities = batch_td_error * experience_distances
-          elif self._method_scheme == 'softmax':
-            experience_distances = jax.nn.softmax(experience_distances)
-            # IDEA 2: Assigning the priorities relative to the softmax of the experience distances in the batch
-            priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
 
           # IDEA 3: Exponential weighted average
-          # elif self._method_scheme == 'exponential_weighted':
-
-
-
+          if self._method_scheme == 'exponential_norm':
+            experience_distances = self._exponential_normalizer.normalize(experience_distances)
+            priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
+          else:
+            experience_distances = experience_distances / jnp.sqrt(512) # 512 is the size of the representation        
+            if self._method_scheme == 'scaling':
+              priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
+            elif self._method_scheme == 'softmax_weight':
+              experience_distances = jax.nn.softmax(experience_distances)
+              # IDEA 1: Experimental method: Reweighing the priorities based on the experience distances
+              priorities = batch_td_error * experience_distances
+            elif self._method_scheme == 'softmax':
+              experience_distances = jax.nn.softmax(experience_distances)
+              # IDEA 2: Assigning the priorities relative to the softmax of the experience distances in the batch
+              priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
 
           self._replay.update(
               self.replay_elements['indices'],
