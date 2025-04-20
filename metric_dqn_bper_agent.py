@@ -157,7 +157,6 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                replay_scheme='uniform',
                bper_weight=0, # PER: 0 and BPER: 1
                method_scheme='scaling' # 'softmax', 'softmax_weight'
-              #  alpha=0.99, # Smoothing factor for EWA
                ):
     self._mico_weight = mico_weight
     self._distance_fn = distance_fn
@@ -292,6 +291,9 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
               experience_distances = jax.nn.softmax(experience_distances)
               # IDEA 2: Assigning the priorities relative to the softmax of the experience distances in the batch
               priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
+            elif self._method_scheme == 'td_weights':
+              priorities = jax.nn.softmax(batch_td_error) * jax.nn.softmax(experience_distances)
+
 
           self._replay.update(
               self.replay_elements['indices'],
