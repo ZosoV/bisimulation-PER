@@ -29,7 +29,7 @@ set -x
 # source ./bin/activate
 
 # pip install -r mico/requirements.txt
-GAME_NAME=${1:-"Alien"}  #
+GAME_NAME=${1:-"SpaceInvaders"}  #
 AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no agent name is specified
 BPER_SCHEME=${BPER_SCHEME:-"exponential_norm"}  # Default to softmax if no BPER scheme is specified
 
