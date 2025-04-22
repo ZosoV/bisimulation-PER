@@ -141,7 +141,7 @@ class ExponentialNormalizer(object):
         self._running_sum: jnp.ndarray = jnp.zeros(1)
         self._running_sqsum: jnp.ndarray = jnp.zeros(1)
         self._running_count: jnp.ndarray = jnp.zeros(1)
-        # self._running_min: jnp.ndarray = jnp.array(float('inf'))  # Track min
+        self._running_min: jnp.ndarray = jnp.array(float('inf'))  # Track min
         self._initialized: bool = False
         self._eps: float = 1e-10
     
@@ -157,14 +157,13 @@ class ExponentialNormalizer(object):
         # Normalize the input
         normalized = (x - mean) / jnp.maximum(std, self._eps)
         # Shift to positive range
-        # if update_stats:
-        #     # Chose between the minimum of the running minimum and the minimum of the batch
-        #     # to avoid negative values
-        #     self._running_min = jnp.minimum(self._running_min, jnp.min(normalized))
+        if update_stats:
+            # Chose between the minimum of the running minimum and the minimum of the batch
+            # to avoid negative values
+            self._running_min = jnp.minimum(self._running_min, jnp.min(normalized))
         
         # If the minimum is positive, we don't need to shift
-        min_val = jnp.min(normalized)
-        normalized = normalized - min_val + self._eps if min_val < 0 else normalized
+        normalized = normalized - self._running_min + self._eps if self._running_min < 0 else normalized
         return normalized
     
     def current_stats(self):

@@ -318,14 +318,15 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                 # I can comment this part
                 # Log the statistics as scalars
                 if self._replay_scheme == 'prioritized':
-                  tf.summary.scalar('Priority/TDPriority_Mean', jnp.mean(batch_td_error), step=self.training_steps)
-                  tf.summary.scalar('Priority/TDPriority_Std', jnp.std(batch_td_error), step=self.training_steps)
-                  tf.summary.scalar('Priority/ExperienceDistance_Mean', jnp.mean(experience_distances), step=self.training_steps)
-                  tf.summary.scalar('Priority/ExperienceDistance_Std', jnp.std(experience_distances), step=self.training_steps)
+                  pass
+                  # tf.summary.scalar('Priority/TDPriority_Mean', jnp.mean(batch_td_error), step=self.training_steps)
+                  # tf.summary.scalar('Priority/TDPriority_Std', jnp.std(batch_td_error), step=self.training_steps)
+                  # tf.summary.scalar('Priority/ExperienceDistance_Mean', jnp.mean(experience_distances), step=self.training_steps)
+                  # tf.summary.scalar('Priority/ExperienceDistance_Std', jnp.std(experience_distances), step=self.training_steps)
 
-                  # Log the tensors as histograms
-                  tf.summary.histogram('Priority/TDPriority', batch_td_error, step=self.training_steps)
-                  tf.summary.histogram('Priority/ExperienceDistance', experience_distances, step=self.training_steps)
+                  # # Log the tensors as histograms
+                  # tf.summary.histogram('Priority/TDPriority', batch_td_error, step=self.training_steps)
+                  # tf.summary.histogram('Priority/ExperienceDistance', experience_distances, step=self.training_steps)
                   
                 tf.summary.scalar('Losses/Aggregate', loss, step=self.training_steps)
                 tf.summary.scalar('Losses/Bellman', bellman_loss, step=self.training_steps)
