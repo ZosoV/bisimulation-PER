@@ -163,7 +163,6 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     self._method_scheme = method_scheme
 
     self._exponential_normalizer = metric_utils.ExponentialNormalizer()
-    
     network = AtariDQNNetwork
     super().__init__(num_actions, network=network,
                      summary_writer=summary_writer)
@@ -328,10 +327,15 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                   # tf.summary.histogram('Priority/TDPriority', batch_td_error, step=self.training_steps)
                   # tf.summary.histogram('Priority/ExperienceDistance', experience_distances, step=self.training_steps)
                   
-                tf.summary.scalar('Losses/Aggregate', loss, step=self.training_steps)
-                tf.summary.scalar('Losses/Bellman', bellman_loss, step=self.training_steps)
-                tf.summary.scalar('Losses/Metric', metric_loss, step=self.training_steps)
+                tf.summary.scalar('Losses/Aggregate', loss, step=self.training_steps * 4)
+                tf.summary.scalar('Losses/Bellman', bellman_loss, step=self.training_steps * 4)
+                tf.summary.scalar('Losses/Metric', metric_loss, step=self.training_steps * 4)
+
+                
+
       if self.training_steps % self.target_update_period == 0:
         self._sync_weights()
 
     self.training_steps += 1
+
+
