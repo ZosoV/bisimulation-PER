@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=bisimulation-rl-DQN
 #SBATCH --ntasks=1
-#SBATCH --time=2-00:00:00
+#SBATCH --time=10-00:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=o.v.guarnizocabezas@bham.ac.uk
 #SBATCH --qos=bbgpu
@@ -83,7 +83,7 @@ SEED=${seeds[$SLURM_ARRAY_TASK_ID]}
 
 # Record the start time
 start_time=$(date +%s)
-echo "Starting task with seed $SEED at $(date)"
+echo "Starting task with seed $SEED at $(date)"do 
 
 # Define a function to be executed on exit
 function notify_job_completion {

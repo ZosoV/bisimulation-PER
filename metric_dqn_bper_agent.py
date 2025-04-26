@@ -35,6 +35,7 @@ from absl import logging
 
 # from mico.atari import metric_utils
 import metric_utils
+import eval_utils
 
 NetworkType = collections.namedtuple('network', ['q_values', 'representation'])
 
@@ -51,15 +52,19 @@ class AtariDQNNetwork(nn.Module):
     x = nn.Conv(features=32, kernel_size=(8, 8), strides=(4, 4),
                 kernel_init=initializer)(x)
     x = nn.relu(x)
+    self.sow('intermediates', 'relu_1', x)
     x = nn.Conv(features=64, kernel_size=(4, 4), strides=(2, 2),
                 kernel_init=initializer)(x)
     x = nn.relu(x)
+    self.sow('intermediates', 'relu_2', x)
     x = nn.Conv(features=64, kernel_size=(3, 3), strides=(1, 1),
                 kernel_init=initializer)(x)
     x = nn.relu(x)
+    self.sow('intermediates', 'relu_3', x)
     representation = x.reshape(-1)  # flatten
     x = nn.Dense(features=512, kernel_init=initializer)(representation)
     x = nn.relu(x)
+    self.sow('intermediates', 'relu_4', x)
     q_values = nn.Dense(features=self.num_actions,
                         kernel_init=initializer)(x)
     return NetworkType(q_values, representation)
@@ -156,11 +161,16 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                distance_fn=metric_utils.cosine_distance,
                replay_scheme='uniform',
                bper_weight=0, # PER: 0 and BPER: 1
-               method_scheme='scaling' # 'softmax', 'softmax_weight'
+               method_scheme='scaling', # 'softmax', 'softmax_weight'
+               log_dynamics_stats=False,
+               batch_size_statistics=512 # 256,
                ):
     self._mico_weight = mico_weight
     self._distance_fn = distance_fn
     self._method_scheme = method_scheme
+
+    self._log_dynamics_stats = log_dynamics_stats
+    self._batch_size_statistics = batch_size_statistics
 
     self._exponential_normalizer = metric_utils.ExponentialNormalizer()
     network = AtariDQNNetwork
@@ -215,6 +225,30 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
         transition_accumulator=transition_accumulator,
         sampling_distribution=sampling_distribution,
     )
+
+  def _sample_batch_for_statistics(self):
+    """Sample elements from the replay buffer."""
+    tmp_replay_elements = collections.OrderedDict()
+    elems, metadata = self._replay.sample(size = self._batch_size_statistics,
+                                          with_sample_metadata=True)
+    tmp_replay_elements['state'] = elems.state
+    tmp_replay_elements['next_state'] = elems.next_state
+    tmp_replay_elements['action'] = elems.action
+    tmp_replay_elements['reward'] = elems.reward
+    tmp_replay_elements['terminal'] = elems.is_terminal
+    if self._replay_scheme == 'prioritized':
+      tmp_replay_elements['indices'] = metadata.keys
+      tmp_replay_elements['sampling_probabilities'] = metadata.probabilities
+
+    return tmp_replay_elements
+
+  def _get_intermediates(self):
+      batch = self._sample_batch_for_statistics()  # Non-JIT part
+      return eval_utils.compute_intermediates(
+          self.network_def,
+          self.online_params,
+          batch['state'],
+      )
 
   def _train_step(self):
     """Runs a single training step."""
@@ -331,7 +365,14 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                 tf.summary.scalar('Losses/Bellman', bellman_loss, step=self.training_steps * 4)
                 tf.summary.scalar('Losses/Metric', metric_loss, step=self.training_steps * 4)
 
-                
+                if self._log_dynamics_stats:
+                  stats = collections.OrderedDict()
+                  stats['Stats/DormantPercentage'] = eval_utils.log_dormant_percentage(
+                    self._get_intermediates())
+
+                  for key, value in stats.items():
+                      tf.summary.scalar(key, value, step=self.training_steps * 4)
+
 
       if self.training_steps % self.target_update_period == 0:
         self._sync_weights()
