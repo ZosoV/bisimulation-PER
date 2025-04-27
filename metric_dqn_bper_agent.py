@@ -314,7 +314,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
             priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
           else:
             experience_distances = experience_distances / jnp.sqrt(15488) 
-            # 15488 is the size of the representation when using the AtariDQNNetwork        
+            # NOTE: 15488 is the size of the representation when using the ataria network with input size 84x84x4        
             if self._method_scheme == 'scaling':
               priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
             elif self._method_scheme == 'softmax_weight':
