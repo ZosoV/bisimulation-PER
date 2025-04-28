@@ -73,6 +73,7 @@ PIP_CACHE_DIR="/scratch/${USER}/pip"
 # seeds=(118398 919409 711872) # 442081 189061)
 seeds=(442081)
 
+# SEED=${seeds[$SLURM_ARRAY_TASK_ID]}
 SEED=${seeds[0]}
 
 # Execute each game sequentially
