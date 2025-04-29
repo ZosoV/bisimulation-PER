@@ -5,6 +5,7 @@ logs/
 outputs/
 atari_100k/logs/
 atari_100k/outputs/
+checkpoints/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -3,6 +3,7 @@
 # comparison.
 import dopamine.discrete_domains.atari_lib
 import dopamine.discrete_domains.run_experiment
+import dopamine.discrete_domains.checkpointer
 import dopamine.jax.agents.dqn.dqn_agent
 import dopamine.jax.replay_memory.replay_buffer
 import metric_dqn_bper_agent
@@ -39,5 +40,6 @@ Runner.max_steps_per_episode = 27_000  # agent steps
 
 ReplayBuffer.max_capacity = 1_000_000
 ReplayBuffer.checkpoint_duration = 2
+Checkpointer.keep_every = 100
 PrioritizedSamplingDistribution.max_capacity = 1_000_000
 ReplayBuffer.batch_size = 32

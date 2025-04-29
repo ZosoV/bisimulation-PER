@@ -127,7 +127,7 @@ for GAME_NAME in "${GAME_LIST[@]}"; do
         echo "Runtime: ${days}d ${hours}h ${minutes}m"
         echo ""
         echo "SLURM Job ID: $SLURM_JOBID"
-    } | mailx -s "[Game Completed] ${AGENT_NAME} on ${GAME_NAME} (Seed: ${SEED})" o.v.guarnizocabezas@bham.ac.uk
+    } | mailx -s "Slurm Array Job: [Game Completed] ${AGENT_NAME} on ${GAME_NAME} (Seed: ${SEED})" o.v.guarnizocabezas@bham.ac.uk
 
     echo "Completed game $GAME_NAME at $(date)"
 done
