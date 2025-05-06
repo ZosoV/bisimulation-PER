@@ -74,8 +74,8 @@ PIP_CACHE_DIR="/scratch/${USER}/pip"
 seeds=(118398 919409 711872) # 442081 189061)
 # seeds=(442081)
 
-# SEED=${seeds[$SLURM_ARRAY_TASK_ID]}
-SEED=${seeds[0]}
+SEED=${seeds[$SLURM_ARRAY_TASK_ID]}
+# SEED=${seeds[0]}
 
 # Execute each game sequentially
 for GAME_NAME in "${GAME_LIST[@]}"; do
@@ -109,7 +109,8 @@ for GAME_NAME in "${GAME_LIST[@]}"; do
             --gin_files=dqn.gin \
             --game_name=${GAME_NAME} \
             --agent_name=${AGENT_NAME} \
-            --seed=${SEED}
+            --seed=${SEED} \
+            --gin_bindings="MetricDQNBPERAgent.replay_scheme='uniform'"
     fi
 
     # Calculate runtime for the current game

@@ -30,7 +30,7 @@ set -x
 
 # pip install -r mico/requirements.txt
 GAME_NAME=${1:-"Alien"}  #
-AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no agent name is specified
+AGENT_NAME=${AGENT_NAME:-metric_dqn}  # Default to metric_dqn_bper if no agent name is specified
 BPER_SCHEME=${BPER_SCHEME:-"scaling"}  # Default to softmax if no BPER scheme is specified
 
 seeds=(118398 919409 711872 442081 189061)
@@ -98,7 +98,8 @@ elif [ "$AGENT_NAME" == "metric_dqn" ]; then
         --gin_files=dqn.gin \
         --game_name=${GAME_NAME} \
         --agent_name=${AGENT_NAME} \
-        --seed=${SEED}
+        --seed=${SEED} \
+        --gin_bindings="MetricDQNBPERAgent.replay_scheme='uniform'"
     
 else
     echo "Unknown variant: $AGENT_NAME"

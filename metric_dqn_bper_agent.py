@@ -214,10 +214,15 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
         update_horizon=self.update_horizon,
         gamma=self.gamma,
     )
-
-    sampling_distribution = samplers.PrioritizedSamplingDistribution(
-            seed=self._seed
-       )
+    if self._replay_scheme == 'uniform':
+      # NOTE: set a fixed uniform distribution for sampling uniformly from the experience replay
+      sampling_distribution = samplers.UniformSamplingDistribution(
+          seed=self._seed
+      )
+    elif self._replay_scheme == 'prioritized':
+      sampling_distribution = samplers.PrioritizedSamplingDistribution(
+              seed=self._seed
+        )
     return custom_replay_buffer.CustomReplayBuffer(
         transition_accumulator=transition_accumulator,
         sampling_distribution=sampling_distribution,
