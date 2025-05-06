@@ -137,7 +137,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                batch_size_statistics=1024,   #512, # 256,
                log_replay_buffer_stats=None,
                game_name=None,
-               fixed_agent_ckpt='checkpoints/{}/metric_dqn/118398/checkpoints/ckpt.99'
+               fixed_agent_ckpt=None
                ):
     self._mico_weight = mico_weight
     self._distance_fn = distance_fn
@@ -189,6 +189,10 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     logging.info('\t allow_partial_reload: %s', self.allow_partial_reload)
 
   def _create_fixed_agent(self):
+
+    if self.fixed_agent_ckpt is None:
+      raise ValueError('The fixed agent checkpoint is None. Please provide a valid checkpoint.')
+
     agent = pretrained_metric_dqn.create_agent(
           num_actions = self.num_actions,
           agent_name='metric_dqn', 
@@ -389,10 +393,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
 
                 stats = collections.OrderedDict()
                     
-                # if self._log_dynamics_stats:
-                #   _, intermediates = self._get_outputs()
-                #   stats['Stats/DormantPercentage'] = eval_utils.log_dormant_percentage(
-                #     intermediates)
+
                   
                 if self._log_replay_buffer_stats:
                   
@@ -446,6 +447,14 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
 
                   stats['Stats/TD-ErrorAvg'] = td_errors_stats.mean
                   stats['Stats/TD-ErrorStd'] = jnp.sqrt(td_errors_stats.variance)
+
+        
+                if self._log_dynamics_stats:
+                  eval_batch = self._get_outputs(agent_id='online',
+                                            next_states=False, 
+                                            intermediates=True)
+                  stats['Stats/DormantPercentage'] = eval_utils.log_dormant_percentage(
+                    eval_batch["output"][1])
 
                 for key, value in stats.items():
                     tf.summary.scalar(key, value, step=self.training_steps * 4)

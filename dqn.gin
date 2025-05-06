@@ -20,7 +20,7 @@ JaxDQNAgent.epsilon_decay_period = 250_000  # agent steps
 JaxDQNAgent.summary_writing_frequency = 250_000 # only for losses
 MetricDQNBPERAgent.replay_scheme = 'prioritized'
 MetricDQNBPERAgent.bper_weight = 1 # BPER
-MetricDQNBPERAgent.log_dynamics_stats = False
+MetricDQNBPERAgent.log_dynamics_stats = True
 MetricDQNBPERAgent.log_replay_buffer_stats = True
 MetricDQNBPERAgent.fixed_agent_ckpt = 'logs/{}/metric_dqn/442081/checkpoints/ckpt.99'
 

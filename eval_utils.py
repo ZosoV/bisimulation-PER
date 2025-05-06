@@ -67,7 +67,7 @@ def get_features(network_def, params, states, intermediates = True):
             )
     if intermediates:
         output, state = jax.vmap(apply_data)(states)
-        return jax.lax.stop_gradient(state['intermediates']), jax.lax.stop_gradient(output)
+        return jax.lax.stop_gradient(output), jax.lax.stop_gradient(state['intermediates'])
     else:
         return jax.lax.stop_gradient(jax.vmap(apply_data)(states))
     

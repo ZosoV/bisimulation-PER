@@ -44,7 +44,7 @@ import metric_dqn_bper_agent
 
 flags.DEFINE_string('base_dir', "logs/",
                     'Base directory to host all required sub-directories.')
-flags.DEFINE_string('game_name', "SpaceInvaders",
+flags.DEFINE_string('game_name', "Alien",
                     'Atari Game basename.')
 flags.DEFINE_string('agent_name', "metric_dqn_bper",
                     'Set the agent name.')
