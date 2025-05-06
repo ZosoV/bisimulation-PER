@@ -24,7 +24,7 @@ class CustomReplayBuffer(replay_buffer.ReplayBuffer[replay_buffer.ReplayElementT
             *,
             batch_size: int,
             max_capacity: int,
-            checkpoint_duration: int = 4,
+            checkpoint_duration: int = 2,
             compress: bool = True,):
         super().__init__(
             transition_accumulator=transition_accumulator,
