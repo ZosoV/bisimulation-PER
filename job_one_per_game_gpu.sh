@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=bisimulation-rl-DQN
+#SBATCH --array=0-2
 #SBATCH --ntasks=1
 #SBATCH --time=10-00:00:00
 #SBATCH --mail-type=ALL
@@ -70,8 +71,8 @@ PIP_CACHE_DIR="/scratch/${USER}/pip"
 # pip uninstall -y jax jaxlib
 # pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
-# seeds=(118398 919409 711872) # 442081 189061)
-seeds=(442081)
+seeds=(118398 919409 711872) # 442081 189061)
+# seeds=(442081)
 
 # SEED=${seeds[$SLURM_ARRAY_TASK_ID]}
 SEED=${seeds[0]}

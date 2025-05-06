@@ -7,6 +7,7 @@ import dopamine.discrete_domains.checkpointer
 import dopamine.jax.agents.dqn.dqn_agent
 import dopamine.jax.replay_memory.replay_buffer
 import metric_dqn_bper_agent
+import custom_replay_buffer
 
 JaxDQNAgent.gamma = 0.99
 JaxDQNAgent.update_horizon = 1
@@ -20,6 +21,8 @@ JaxDQNAgent.summary_writing_frequency = 250_000 # only for losses
 MetricDQNBPERAgent.replay_scheme = 'prioritized'
 MetricDQNBPERAgent.bper_weight = 1 # BPER
 MetricDQNBPERAgent.log_dynamics_stats = False
+MetricDQNBPERAgent.log_replay_buffer_stats = True
+MetricDQNBPERAgent.fixed_agent_ckpt = 'logs/{}/metric_dqn/442081/checkpoints/ckpt.99'
 
 # Note: We are using the Adam optimizer by default for JaxDQN, which differs
 #       from the original NatureDQN and the dopamine TensorFlow version. In
@@ -38,8 +41,8 @@ Runner.num_iterations = 100
 Runner.training_steps = 250_000  # agent steps
 Runner.max_steps_per_episode = 27_000  # agent steps
 
-ReplayBuffer.max_capacity = 1_000_000
-ReplayBuffer.checkpoint_duration = 2
+CustomReplayBuffer.max_capacity = 1_000_000
+CustomReplayBuffer.checkpoint_duration = 2
 Checkpointer.keep_every = 100
 PrioritizedSamplingDistribution.max_capacity = 1_000_000
-ReplayBuffer.batch_size = 32
+CustomReplayBuffer.batch_size = 32

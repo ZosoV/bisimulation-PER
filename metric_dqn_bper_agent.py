@@ -33,10 +33,13 @@ import tensorflow as tf
 from absl import logging
 
 
+# Own scripts
 # from mico.atari import metric_utils
 import metric_utils
 import eval_utils
 import networks
+import custom_replay_buffer
+import pretrained_metric_dqn
 
 @functools.partial(jax.jit, static_argnums=(0, 3, 10, 11, 12, 14))
 def train(network_def, online_params, target_params, optimizer, optimizer_state,
@@ -131,16 +134,26 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                bper_weight=0, # PER: 0 and BPER: 1
                method_scheme='scaling', # 'softmax', 'softmax_weight'
                log_dynamics_stats=False,
-               batch_size_statistics=512 # 256,
+               batch_size_statistics=1024,   #512, # 256,
+               log_replay_buffer_stats=None,
+               game_name=None,
+               fixed_agent_ckpt='checkpoints/{}/metric_dqn/118398/checkpoints/ckpt.99'
                ):
     self._mico_weight = mico_weight
     self._distance_fn = distance_fn
     self._method_scheme = method_scheme
+    self.num_actions = num_actions
 
     self._log_dynamics_stats = log_dynamics_stats
+    self._log_replay_buffer_stats = log_replay_buffer_stats
     self._batch_size_statistics = batch_size_statistics
 
+    self.game_name = game_name
+    self.fixed_agent_ckpt = fixed_agent_ckpt.format(self.game_name)
+    self._fixed_pretrained_agent = self._create_fixed_agent()
+    
     self._exponential_normalizer = metric_utils.ExponentialNormalizer()
+
     network = networks.AtariDQNNetwork
     super().__init__(num_actions, network=network,
                      summary_writer=summary_writer)
@@ -174,6 +187,18 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     logging.info('\t preprocess_fn: %s', self.preprocess_fn)
     logging.info('\t summary_writing_frequency: %d', self.summary_writing_frequency)
     logging.info('\t allow_partial_reload: %s', self.allow_partial_reload)
+
+  def _create_fixed_agent(self):
+    agent = pretrained_metric_dqn.create_agent(
+          num_actions = self.num_actions,
+          agent_name='metric_dqn', 
+        )
+
+    # NOTE: Change this according to where the pretrained agent is saved
+    pretrained_metric_dqn.reload_checkpoint(agent, self.fixed_agent_ckpt)
+
+    return agent
+
     
   def _build_replay_buffer(self):
     """Creates the replay buffer used by the agent."""
@@ -189,15 +214,16 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     sampling_distribution = samplers.PrioritizedSamplingDistribution(
             seed=self._seed
        )
-    return replay_buffer.ReplayBuffer(
+    return custom_replay_buffer.CustomReplayBuffer(
         transition_accumulator=transition_accumulator,
         sampling_distribution=sampling_distribution,
+        seed = self._seed, # Seed  fot the fixed uniform distribution
     )
 
   def _sample_batch_for_statistics(self):
     """Sample elements from the replay buffer."""
     tmp_replay_elements = collections.OrderedDict()
-    elems, metadata = self._replay.sample(size = self._batch_size_statistics,
+    elems, metadata = self._replay.sample_uniform(size = self._batch_size_statistics,
                                           with_sample_metadata=True)
     tmp_replay_elements['state'] = elems.state
     tmp_replay_elements['next_state'] = elems.next_state
@@ -206,17 +232,61 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     tmp_replay_elements['terminal'] = elems.is_terminal
     if self._replay_scheme == 'prioritized':
       tmp_replay_elements['indices'] = metadata.keys
-      tmp_replay_elements['sampling_probabilities'] = metadata.probabilities
 
     return tmp_replay_elements
 
-  def _get_intermediates(self):
+  def _get_outputs(self, 
+                   agent_id = "fixed", # "fixed" or "online" or "target"
+                   next_states = False,
+                   intermediates = True):
       batch = self._sample_batch_for_statistics()  # Non-JIT part
-      return eval_utils.compute_intermediates(
-          self.network_def,
-          self.online_params,
-          batch['state'],
-      )
+      
+      if agent_id == "fixed":
+        # NOTE: I can use the fixed agent to get the features
+        batch['output'] =  eval_utils.get_features(
+            self._fixed_pretrained_agent.network_def,
+            self._fixed_pretrained_agent.online_params,
+            batch['state'],
+            intermediates
+        )
+        if next_states:
+          batch['output_next']  =  eval_utils.get_features(
+              self._fixed_pretrained_agent.network_def,
+              self._fixed_pretrained_agent.online_params,
+              batch['next_state'],
+              intermediates
+          )
+      elif agent_id == "online":
+        batch["output"] =  eval_utils.get_features(
+            self.network_def,
+            self.online_params,
+            batch['state'],
+            intermediates
+        )
+        if next_states:
+          batch["output_next"] =  eval_utils.get_features(
+              self.network_def,
+              self.online_params,
+              batch['next_state'],
+              intermediates
+          )
+      elif agent_id == "target":
+        batch["output"] =  eval_utils.get_features(
+            self.network_def,
+            self.target_network_params,
+            batch['state'],
+            intermediates
+        )
+        if next_states:
+          batch["output_next"] =  eval_utils.get_features(
+              self.network_def,
+              self.target_network_params,
+              batch['next_state'],
+              intermediates
+          )
+          
+      return batch
+
 
   def _train_step(self):
     """Runs a single training step."""
@@ -305,43 +375,80 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
         if (self.summary_writer is not None and
             self.training_steps > 0 and
             self.training_steps % self.summary_writing_frequency == 0):
-        #   summary = tf.compat.v1.Summary(value=[
-        #       tf.compat.v1.Summary.Value(tag='Losses/Aggregate',
-        #                                  simple_value=loss),
-        #       tf.compat.v1.Summary.Value(tag='Losses/Bellman',
-        #                                  simple_value=bellman_loss),
-        #       tf.compat.v1.Summary.Value(tag='Losses/Metric',
-        #                                  simple_value=metric_loss),
-        #   ])
-        #   self.summary_writer.add_summary(summary, self.training_steps)
+
             with self.summary_writer.as_default():
 
                 # NOTE: When I already have a well chose strategy for the experience distance
                 # I can comment this part
                 # Log the statistics as scalars
                 if self._replay_scheme == 'prioritized':
-                  pass
-                  # tf.summary.scalar('Priority/TDPriority_Mean', jnp.mean(batch_td_error), step=self.training_steps)
-                  # tf.summary.scalar('Priority/TDPriority_Std', jnp.std(batch_td_error), step=self.training_steps)
-                  # tf.summary.scalar('Priority/ExperienceDistance_Mean', jnp.mean(experience_distances), step=self.training_steps)
-                  # tf.summary.scalar('Priority/ExperienceDistance_Std', jnp.std(experience_distances), step=self.training_steps)
-
-                  # # Log the tensors as histograms
-                  # tf.summary.histogram('Priority/TDPriority', batch_td_error, step=self.training_steps)
-                  # tf.summary.histogram('Priority/ExperienceDistance', experience_distances, step=self.training_steps)
-                  
+                  pass                  
                 tf.summary.scalar('Losses/Aggregate', loss, step=self.training_steps * 4)
                 tf.summary.scalar('Losses/Bellman', bellman_loss, step=self.training_steps * 4)
                 tf.summary.scalar('Losses/Metric', metric_loss, step=self.training_steps * 4)
 
-                if self._log_dynamics_stats:
-                  stats = collections.OrderedDict()
-                  stats['Stats/DormantPercentage'] = eval_utils.log_dormant_percentage(
-                    self._get_intermediates())
+                stats = collections.OrderedDict()
+                    
+                # if self._log_dynamics_stats:
+                #   _, intermediates = self._get_outputs()
+                #   stats['Stats/DormantPercentage'] = eval_utils.log_dormant_percentage(
+                #     intermediates)
+                  
+                if self._log_replay_buffer_stats:
+                  
+                  # NOTE: The representations are calculated using the fixed agent at 
+                  # checkpoint 99 and using a uniform sample from the current
+                  # replay buffer
+                  
 
-                  for key, value in stats.items():
-                      tf.summary.scalar(key, value, step=self.training_steps * 4)
+                  # NOTE: To approximate better the distribution of the bisimulation distance and euclidean distance
+                  # I can sample several times batch until cover at 1% of the size of the replay buffer
+                  # 20 minibatches of 512 will be 10240 samples
+                  # 10 minibatches of 1024 will be 10240 samples
 
+                  metric_stats = eval_utils.RunningStats()
+                  euclidean_stats = eval_utils.RunningStats()
+
+                  num_samples = 10
+                  for i in range(num_samples):
+                    eval_batch = self._get_outputs(agent_id='fixed', 
+                                                  next_states=True, 
+                                                  intermediates=False)
+                  
+                    curr_outputs, next_outputs = eval_batch['output'], eval_batch['output_next']
+
+                    metric_distances = metric_utils.current_next_distances(
+                        curr_outputs.representation, next_outputs.representation, self._distance_fn)
+                    metric_stats.update_running_stats(metric_distances)
+
+                    euclidean_distances = jnp.sqrt(jnp.sum((curr_outputs.representation - next_outputs.representation)**2, axis=1))
+                    euclidean_stats.update_running_stats(euclidean_distances)
+
+                  stats['Stats/BisimulationDistanceAvg'] = metric_stats.mean
+                  stats['Stats/BisimulationDistanceStd'] = jnp.sqrt(metric_stats.variance)
+
+                  stats['Stats/EuclideanDistanceAvg'] = euclidean_stats.mean
+                  stats['Stats/EuclideanDistanceStd'] = jnp.sqrt(euclidean_stats.variance)
+
+                  td_errors_stats = eval_utils.RunningStats()
+                  for i in range(num_samples):
+                    eval_batch = self._get_outputs(agent_id='online',
+                                            next_states=False, 
+                                            intermediates=False)
+
+                    td_errors = eval_utils.log_td_errors(
+                        eval_batch,
+                        self.network_def,
+                        self.target_network_params,
+                        self.cumulative_gamma
+                        )
+                    td_errors_stats.update_running_stats(td_errors)
+
+                  stats['Stats/TD-ErrorAvg'] = td_errors_stats.mean
+                  stats['Stats/TD-ErrorStd'] = jnp.sqrt(td_errors_stats.variance)
+
+                for key, value in stats.items():
+                    tf.summary.scalar(key, value, step=self.training_steps * 4)
 
       if self.training_steps % self.target_update_period == 0:
         self._sync_weights()
