@@ -35,17 +35,6 @@ BB_WORKDIR=$(mktemp -d /scratch/${USER}_${SLURM_JOBID}.XXXXXX)
 export TMPDIR=${BB_WORKDIR}
 # export EXP_BUFF=${BB_WORKDIR}
 
-# Check if an argument is provided
-# if [ -z "$1" ]; then
-#     echo "Error: No W&B API key provided."
-#     exit 1
-# fi
-
-# Set W&B API key from argument and dir
-# export WANDB_API_KEY=$1
-# export WANDB_DIR=${BB_WORKDIR}/wandb
-# mkdir -p $WANDB_DIR
-
 set -x  # Enable debug mode
 set -e
 
@@ -93,57 +82,6 @@ SEED=${seeds[$SLURM_ARRAY_TASK_ID]}
 start_time=$(date +%s)
 echo "Starting task with seed $SEED at $(date)"
 
-# Define a function to be executed on exit
-function notify_job_completion {
-    exit_status=$?
-    end_time=$(date +%s)
-    runtime=$((end_time - start_time))
-    days=$((runtime / 86400))
-    hours=$(( (runtime % 86400) / 3600 ))
-    minutes=$(( (runtime % 3600) / 60 ))
-
-    slurm_output_file="outputs/slurm-files/slurm-DQN-${SLURM_JOBID}_${SLURM_ARRAY_TASK_ID}.out"
-
-    subject="Slurm Array Job: ${AGENT_NAME} on ${GAME_NAME} (Seed: ${SEED})"
-    if [ $exit_status -ne 0 ]; then
-        subject="${subject} [FAILED]"
-    else
-        subject="${subject} [COMPLETED]"
-    fi
-
-    {
-        echo "Task finished at $(date)"
-        echo "Exit status: $exit_status"
-        echo "Seed: $SEED"
-        echo "Game: $GAME_NAME"
-        echo "Agent: $AGENT_NAME"
-        echo "Total runtime: ${days} days, ${hours} hours, ${minutes} minutes"
-        echo ""
-        # echo "SLURM Output (${slurm_output_file}):"
-        # cat "$slurm_output_file"
-    } | mailx -s "$subject" o.v.guarnizocabezas@bham.ac.uk
-}
-
-# Trap both EXIT and ERR signals
-trap notify_job_completion EXIT
-
-# Print current OMP_NUM_THREADS and MKL_NUM_THREADS
-echo "OMP_NUM_THREADS=$OMP_NUM_THREADS"
-echo "MKL_NUM_THREADS=$MKL_NUM_THREADS"
-echo "OPENBLAS_NUM_THREADS=$OPENBLAS_NUM_THREADS"
-echo "NUM_INTER_THREADS=$NUM_INTER_THREADS"
-echo "NUM_INTRA_THREADS=$NUM_INTRA_THREADS"
-echo "XLA_FLAGS=$XLA_FLAGS"
-
-# # Set the number of threads for MKL and OMP
-# export OMP_NUM_THREADS=$CUSTOM_THREADS
-# export MKL_NUM_THREADS=$CUSTOM_THREADS
-# export OPENBLAS_NUM_THREADS=$CUSTOM_THREADS
-# export NUM_INTER_THREADS=$CUSTOM_THREADS
-# export NUM_INTRA_THREADS=$CUSTOM_THREADS
-# export XLA_FLAGS="--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads=$CUSTOM_THREADS"
-
-
 # Execute based on the selected variant
 if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
     python -m train \
@@ -170,45 +108,35 @@ elif [ "$AGENT_NAME" == "metric_dqn" ]; then
         --gin_files=dqn.gin \
         --game_name=${GAME_NAME} \
         --agent_name=${AGENT_NAME} \
-        --seed=${SEED}
-    
-else
-    echo "Unknown variant: $AGENT_NAME"
-    echo "Task with seed: $SEED, game: $GAME_NAME and agent: $AGENT_NAME has failed at $(date)" | mail -s "SLURM Job Notification: Task Failed" o.v.guarnizocabezas@bham.ac.uk
-    exit 1
+        --seed=${SEED} \
+        --gin_bindings="MetricDQNBPERAgent.replay_scheme='uniform'"
+
 fi
 
 echo "Completed task with seed $SEED at $(date)"
 
-# Removing extra checkpoints
-# echo "Removing extra checkpoints"
-# CHECKPOINTS_DIR="logs/${GAME_NAME}/${AGENT_NAME}/${SEED}/checkpoints"
+exit_status=$?
+end_time=$(date +%s)
+runtime=$((end_time - start_time))
+days=$((runtime / 86400))
+hours=$(( (runtime % 86400) / 3600 ))
+minutes=$(( (runtime % 3600) / 60 ))
 
-# if [ -n "${CHECKPOINTS_DIR}" ] && [ -d "${CHECKPOINTS_DIR}" ]; then
-#     # Change to the directory and get the latest numbered directory
-#     cd "${CHECKPOINTS_DIR}" && latest=$(ls -d [0-9]* 2>/dev/null | sort -n | tail -1)
+slurm_output_file="outputs/slurm-files/slurm-DQN-${SLURM_JOBID}_${SLURM_ARRAY_TASK_ID}.out"
 
-#     if [ -z "$latest" ]; then
-#         echo "No numbered directories found in ${CHECKPOINTS_DIR}"
-#         exit 1
-#     fi
+subject="Slurm Array Job CPU: ${AGENT_NAME} on ${GAME_NAME} (Seed: ${SEED})"
+subject="${subject} [COMPLETED]"
+{
+    echo "Task finished at $(date)"
+    echo "Seed: $SEED"
+    echo "Game: $GAME_NAME"
+    echo "Agent: $AGENT_NAME"
+    echo "Total runtime: ${days} days, ${hours} hours, ${minutes} minutes"
+    echo ""
+    echo "SLURM Output (${slurm_output_file}):"
+    cat "${PROJECT_DIR}/${slurm_output_file}" | grep Iteration
+} | mailx -s "$subject" o.v.guarnizocabezas@bham.ac.uk
 
-#     echo "Keeping: $latest"
-#     echo "Will delete:"
-#     # List files that will be deleted (dry run)
-#     ls | grep -v "^$latest$" | grep -v "sentinel_checkpoint_complete.$latest" | grep -v "ckpt.$latest"
-#     # Actually delete the files
-#     ls | grep -v "^$latest$" | grep -v "sentinel_checkpoint_complete.$latest" | grep -v "ckpt.$latest" | xargs rm -rf
-# else
-#     echo "Usage: $0 <directory>"
-#     echo "Directory must exist"
-#     exit 1
-# fi
-
-
-# Cleanup
-# sleep 300  # 5-minute buffer
-# test -d ${BB_WORKDIR}/wandb/ && /bin/cp -r ${BB_WORKDIR}/wandb/ ./outputs/wandb/
 test -d ${BB_WORKDIR} && /bin/rm -rf ${BB_WORKDIR}
 
 echo "Exiting."
