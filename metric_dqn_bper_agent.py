@@ -415,7 +415,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                   metric_stats = eval_utils.RunningStats()
                   euclidean_stats = eval_utils.RunningStats()
 
-                  num_samples = 10
+                  num_samples = 5
                   for i in range(num_samples):
                     eval_batch = self._get_outputs(agent_id='fixed', 
                                                   next_states=True, 
