@@ -43,6 +43,6 @@ Runner.max_steps_per_episode = 27_000  # agent steps
 
 CustomReplayBuffer.max_capacity = 1_000_000
 CustomReplayBuffer.checkpoint_duration = 2
-Checkpointer.keep_every = 100
+Checkpointer.checkpoint_duration = 100
 PrioritizedSamplingDistribution.max_capacity = 1_000_000
 CustomReplayBuffer.batch_size = 32
