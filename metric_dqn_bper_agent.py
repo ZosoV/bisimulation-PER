@@ -163,7 +163,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     # NOTE: As I create a function that only create the prioritized replay
     # I don't need to call it again here. It is is called above with the super
     # that calls the original DQN agent
-    # self._replay = self._build_replay_buffer() 
+    self._replay = self._build_replay_buffer()
     logging.info(
         'Creating %s agent with the following parameters:',
         self.__class__.__name__,
