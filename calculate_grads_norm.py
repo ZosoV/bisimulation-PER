@@ -140,13 +140,8 @@ def main(unused_argv):
   agent._replay.load(ckpt_dir, iteration_number=1)
 
   # Collect batches for statistics
-  # NOTE: This will be fixed along the whole experiment
-  # and only the outputs will change
-  num_batches = 2 # 2 * 1024 (1024 is the batch size)
-  batches_collected = []
-  for i in range(num_batches):
-    sampled_batch = agent._sample_batch_for_statistics()
-    batches_collected.append(sampled_batch)
+  # NOTE: I only need one because I will use each 2 experience to calculate the gradient
+  sampled_batch = agent._sample_batch_for_statistics(128)
 
   for idx, checkpoint in enumerate(checkpoints):
     # Load the checkpoint.
@@ -156,30 +151,13 @@ def main(unused_argv):
 
     stats = collections.OrderedDict()
 
-    features = []
-    residuals = []
-    batch_bellman_losses = []
-    batch_metric_losses = []
-    experience_distances_list = []
+    num_samples = sampled_batch['state'].shape[0]
+    grads_norms = []
     grads = []
 
-    for sampled_batch in batches_collected:
-      # NOTE: it adds the 'output' key to the sampled batch
-      # using the online network
-      sampled_batch = agent._get_outputs(agent_id='online',
-                                      next_states=False, 
-                                      intermediates=True,
-                                      batch=sampled_batch)
-      # NOTE: it adds the 'output_next' key to the sampled batch
-      # using the target network
-      sampled_batch = agent._get_outputs(agent_id='target',
-                                      curr_states=False,
-                                      next_states=True,
-                                      intermediates=False,
-                                      batch=sampled_batch)
-      
-      
-      loss_weights = jnp.ones(sampled_batch['state'].shape[0])
+    for i in range(0,num_samples - 1, 2):
+
+      loss_weights = jnp.ones(sampled_batch['state'][i:i+2].shape[0])
 
       (loss, 
       batch_bellman_loss, 
@@ -189,11 +167,11 @@ def main(unused_argv):
           agent.network_def,
           agent.online_params,
           agent.target_network_params,
-          sampled_batch['state'],
-          sampled_batch['action'],
-          sampled_batch['next_state'],
-          sampled_batch['reward'],
-          sampled_batch['terminal'],
+          sampled_batch['state'][i:i+2],
+          sampled_batch['action'][i:i+2],
+          sampled_batch['next_state'][i:i+2],
+          sampled_batch['reward'][i:i+2],
+          sampled_batch['terminal'][i:i+2],
           agent.cumulative_gamma,
           agent._mico_weight,
           agent._distance_fn,
@@ -201,93 +179,22 @@ def main(unused_argv):
           agent._bper_weight
         )
       
-      features.append(sampled_batch['output'][0].representation)
-      residuals.append(sampled_batch['output'][0].representation - agent.cumulative_gamma * sampled_batch['output_next'].representation)
-      batch_bellman_losses.append(batch_bellman_loss)
-      batch_metric_losses.append(batch_metric_loss)
-      experience_distances_list.append(experience_distances)
+      grads_norms.append(jnp.linalg.norm(eval_utils.flatten_grads(grad)))
       grads.append(grad)
 
 
-    # Concatenate the features
-    features_matrix = np.concatenate(features, axis=0)
-    residuals_matrix = np.concatenate(residuals, axis=0)
-    batch_bellman_losses_array = np.concatenate(batch_bellman_losses, axis=0)
-    batch_metric_losses_array = np.concatenate(batch_metric_losses, axis=0)
-    experience_distances_array = np.concatenate(experience_distances_list, axis=0)
+    # Log gradient norm
+    stats["Eval/GradientNorm"] = np.mean(grads_norms)
 
-    # Log srank
-    stats["Eval/Srank"] = eval_utils.log_srank(features_matrix)
+    if idx % 99 == 0: # TODO: idx + 1
+      # Save the covariance matrix of grad matrix
+      grad_matrix = eval_utils.get_grad_matrix(grads)
 
-    # Log dormant neurons NOTE: it only uses the last batch
-    stats["Eval/DormantPercentage"] = eval_utils.log_dormant_percentage(sampled_batch['output'][1])
-
-    # Log td-Residuals norm
-    stats["Eval/TD-Residuals"] = eval_utils.log_avg_norm(residuals_matrix)
-
-    # Log representation norm
-    stats["Eval/RepresentationNorm"] = eval_utils.log_avg_norm(features_matrix)
-
-    # Log the loss variance
-    stats["Eval/LossVarianceBellmanLoss"] = np.var(batch_bellman_losses_array)
-    stats["Eval/LossVarianceMetricLoss"] = np.var(batch_metric_losses_array)
-
-    # Log the average bisimulation distance
-    stats["Eval/AverageBisimulationDistance"] = np.mean(experience_distances_array)
-    stats["Eval/StdBisimulationDistance"] = np.var(experience_distances_array)
-
-
-    # # NOTE: in order to get the gradient matrix I need to calculate per example
-    # # NOTE: I use 2 samples because I need at least 2 for getting the metric loss
-    # sampled_batch = agent._sample_batch_for_statistics(8)
-    # num_samples = sampled_batch['state'].shape[0]
-    # grads = []
-
-    # for i in range(0,num_samples - 1, 2):
-
-    #   loss_weights = jnp.ones(sampled_batch['state'][i:i+2].shape[0])
-
-    #   (loss, 
-    #   batch_bellman_loss, 
-    #   batch_metric_loss, 
-    #   experience_distances, 
-    #   grad) = step_forward(
-    #       agent.network_def,
-    #       agent.online_params,
-    #       agent.target_network_params,
-    #       sampled_batch['state'][i:i+2],
-    #       sampled_batch['action'][i:i+2],
-    #       sampled_batch['next_state'][i:i+2],
-    #       sampled_batch['reward'][i:i+2],
-    #       sampled_batch['terminal'][i:i+2],
-    #       agent.cumulative_gamma,
-    #       agent._mico_weight,
-    #       agent._distance_fn,
-    #       loss_weights,
-    #       agent._bper_weight
-    #     )
-
-    #   batch_bellman_losses.append(batch_bellman_loss)
-    #   batch_metric_losses.append(batch_metric_loss)
-    #   experience_distances_list.append(experience_distances)
-    #   grads.append(grad)
-
-    # batch_bellman_losses_array = np.concatenate(batch_bellman_losses, axis=0)
-    # batch_metric_losses_array = np.concatenate(batch_metric_losses, axis=0)
-    # experience_distances_array = np.concatenate(experience_distances_list, axis=0)
-
-
-    # # Log gradient norm
-    # grad_matrix = eval_utils.get_grad_matrix(grads)
-    # stats["Eval/GradientNorm"] = eval_utils.log_avg_norm(grad_matrix)
-
-    # if idx % 99 == 0:
-    #   # Save the covariance matrix of grad matrix
-    #   npy_path = os.path.join(experiment_dir, 'npy_files')
-    #   if not os.path.exists(npy_path):
-    #     os.makedirs(npy_path)
-    #   covariance_matrix_grads = jnp.cov(grad_matrix, rowvar=False)
-    #   np.save(osp.join(npy_path, f'grad_covariance_matrix_{iter}.npy'), covariance_matrix_grads)
+      npy_path = os.path.join(experiment_dir, 'npy_files')
+      if not os.path.exists(npy_path):
+        os.makedirs(npy_path)
+      covariance_matrix_grads = jnp.cov(grad_matrix, rowvar=False)
+      np.save(osp.join(npy_path, f'grad_covariance_matrix_{iter}.npy'), covariance_matrix_grads)
 
     with agent.summary_writer.as_default():
       for key, value in stats.items():

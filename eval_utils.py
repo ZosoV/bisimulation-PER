@@ -105,11 +105,15 @@ def log_td_errors(sampled_batch, network_def, target_params, cumulative_gamma):
     replay_chosen_q = jax.vmap(lambda x, y: x[y])(q_values, sampled_batch['action'])
     return jnp.abs(replay_chosen_q - bellman_target)
 
-def log_srank(feature_matrix, thresh=1e-5):
+def log_srank(feature_matrix, thresh=0.01):
     singular_vals = np.linalg.svd(
       feature_matrix, full_matrices=False, compute_uv=False)
     
-    return max(np.sum(singular_vals >= thresh), 1)
+    cum_sums = np.cumsum(singular_vals)
+    ratios = cum_sums / np.sum(singular_vals)
+
+    # Get the index of the first ratio that exceeds 1 - thresh
+    return np.argmax(ratios >= (1 - thresh)) + 1
 
 def log_avg_norm(matrix):
     """Compute the average norm of the TD residuals."""
@@ -120,6 +124,31 @@ def log_avg_norm(matrix):
     avg_norm = np.mean(norms)
     
     return avg_norm
+
+def flatten_grads_and_get_norm(grads):
+    def flatten_grads(batch_grads):
+        return jnp.concatenate([jnp.ravel(g) for g in jax.tree_util.tree_leaves(batch_grads)])
+    
+    # Compute the L2 norm of each row
+    norms = jnp.linalg.norm(flatten_grads(grads))
+
+def flatten_grads(batch_grads):
+    return jnp.concatenate([jnp.ravel(g) for g in jax.tree_util.tree_leaves(batch_grads)])
+
+def get_grad_matrix(grads):
+    grad_matrix = []
+    for batch_grads in grads:
+        grad_matrix.append(flatten_grads(batch_grads))
+
+    return jnp.stack(grad_matrix)
+
+def compute_covariance_matrix(matrix):
+    # Center the gradients (subtract mean)
+    matrix_centered = matrix - jnp.mean(matrix, axis=0)
+
+    # Compute covariance matrix
+    return jnp.dot(matrix_centered.T, matrix_centered) / (matrix.shape[0] - 1)   
+    
 
 class RunningStats():#
     def __init__(self):

@@ -228,11 +228,15 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
         seed = self._seed, # Seed  fot the fixed uniform distribution
     )
 
-  def _sample_batch_for_statistics(self):
+  def _sample_batch_for_statistics(self, batch_size=None):
     """Sample elements from the replay buffer."""
     tmp_replay_elements = collections.OrderedDict()
-    elems, metadata = self._replay.sample_uniform(size = self._batch_size_statistics,
-                                          with_sample_metadata=True)
+    if batch_size is None:
+      elems, metadata = self._replay.sample_uniform(size = self._batch_size_statistics,
+                                            with_sample_metadata=True)
+    else:
+      elems, metadata = self._replay.sample_uniform(size = batch_size,
+                                            with_sample_metadata=True)
     tmp_replay_elements['state'] = elems.state
     tmp_replay_elements['next_state'] = elems.next_state
     tmp_replay_elements['action'] = elems.action
@@ -247,8 +251,10 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                    agent_id = "fixed", # "fixed" or "online" or "target"
                    curr_states = True,
                    next_states = False,
-                   intermediates = True):
-      batch = self._sample_batch_for_statistics()  # Non-JIT part
+                   intermediates = True,
+                   batch = None):
+      if batch is None:
+        batch = self._sample_batch_for_statistics()  # Non-JIT part
       
       if agent_id == "fixed":
         # NOTE: I can use the fixed agent to get the features
