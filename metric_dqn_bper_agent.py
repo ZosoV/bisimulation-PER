@@ -192,15 +192,13 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     if fixed_agent_ckpt is None:
       return None
 
-    fixed_agent_ckpt.format(self.game_name)
-    
     agent = pretrained_metric_dqn.create_agent(
           num_actions = self.num_actions,
           agent_name='metric_dqn', 
         )
 
     # NOTE: Change this according to where the pretrained agent is saved
-    pretrained_metric_dqn.reload_checkpoint(agent, fixed_agent_ckpt)
+    pretrained_metric_dqn.reload_checkpoint(agent, fixed_agent_ckpt.format(self.game_name))
 
     return agent
 

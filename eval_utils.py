@@ -111,20 +111,10 @@ def log_srank(feature_matrix, thresh=1e-5):
     
     return max(np.sum(singular_vals >= thresh), 1)
 
-def log_td_residuals_avg_norm(residuals_matrix):
+def log_avg_norm(matrix):
     """Compute the average norm of the TD residuals."""
     # Compute the L2 norm of each row
-    norms = np.linalg.norm(residuals_matrix, axis=1)
-    
-    # Compute the average norm
-    avg_norm = np.mean(norms)
-    
-    return avg_norm
-
-def log_representation_avg_norm(feature_matrix):
-    """Compute the average norm of the representation."""
-    # Compute the L2 norm of each row
-    norms = np.linalg.norm(feature_matrix, axis=1)
+    norms = np.linalg.norm(matrix, axis=1)
     
     # Compute the average norm
     avg_norm = np.mean(norms)

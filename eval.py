@@ -16,15 +16,22 @@ import jax
 import jax.numpy as jnp
 import metric_utils
 from dopamine.jax import losses
+import tensorflow as tf
+import os
 
 AGENTS = [
     'metric_dqn', 'metric_dqn_bper', 'metric_dqn_per',
     'metric_dqn_bper_scaling', 'metric_dqn_bper_softmax',
 ]
 
+flags.DEFINE_string('base_dir', "logs/",
+                    'Base directory to host all required sub-directories.')
 flags.DEFINE_enum('agent_name', "metric_dqn", AGENTS, 'Name of the agent.')
 flags.DEFINE_string('checkpoint_dir', "checkpoints/Alien/metric_dqn/118398/", 'Checkpoint path to use')
 flags.DEFINE_string('game_name', 'Alien', 'Name of game')
+flags.DEFINE_string('seed', "118398",
+                    'Random seed to use for the experiment.')
+
 
 flags.DEFINE_multi_string(
     'gin_files', ["eval_metric_dqn.gin"], 'List of paths to gin configuration files.')
@@ -35,8 +42,8 @@ flags.DEFINE_multi_string(
 FLAGS = flags.FLAGS
 
 
-@functools.partial(jax.jit, static_argnums=(0, 3, 10, 11, 12, 14))
-def get_grads(network_def, online_params, target_params, optimizer, optimizer_state,
+@functools.partial(jax.jit, static_argnums=(0, 8, 9, 10, 12))
+def step_forward(network_def, online_params, target_params,
           states, actions, next_states, rewards, terminals, cumulative_gamma,
           mico_weight, distance_fn, loss_weights, bper_weight = 0):
   """Run the training step."""
@@ -66,6 +73,8 @@ def get_grads(network_def, online_params, target_params, optimizer, optimizer_st
         target_next_r, rewards, distance_fn, cumulative_gamma)
     batch_metric_loss = jax.vmap(losses.huber_loss)(online_dist, target_dist)
     metric_loss = jnp.mean(loss_multipliers * batch_metric_loss)
+    batch_loss = ((1. - mico_weight) * batch_bellman_loss +
+                  mico_weight * batch_metric_loss)
     loss = ((1. - mico_weight) * bellman_loss +
             mico_weight * metric_loss)
     
@@ -81,7 +90,7 @@ def get_grads(network_def, online_params, target_params, optimizer, optimizer_st
     else:
       experience_distances = jnp.zeros_like(batch_bellman_loss)
 
-    return jnp.mean(loss), (bellman_loss, metric_loss, batch_bellman_loss, experience_distances)
+    return jnp.mean(loss), (batch_loss, batch_bellman_loss, batch_metric_loss, experience_distances)
 
   def q_target(state):
     return network_def.apply(target_params, state)
@@ -91,10 +100,10 @@ def get_grads(network_def, online_params, target_params, optimizer, optimizer_st
       q_target, states, next_states, rewards, terminals, cumulative_gamma)
   (loss, component_losses), grad = grad_fn(online_params, bellman_target,
                                            target_r, target_next_r, loss_weights)
-  bellman_loss, metric_loss, batch_bellman_loss, experience_distances = component_losses
+  
+  batch_loss, batch_bellman_loss, batch_metric_loss, experience_distances = component_losses
 
-  return loss, bellman_loss, metric_loss, batch_bellman_loss, experience_distances, grad
-
+  return loss, batch_loss, batch_bellman_loss, batch_metric_loss, experience_distances, grad
 
 def main(unused_argv):
   _ = unused_argv
@@ -114,7 +123,9 @@ def main(unused_argv):
   logging.info('Game: %s', FLAGS.game_name)
   environment = atari_lib.create_atari_environment(
       game_name=FLAGS.game_name, sticky_actions=True)
-  summary_writer = None  # Replace with actual summary writer creation.
+  
+  base_dir = FLAGS.base_dir
+  summary_writer = os.path.join(base_dir, FLAGS.game_name, FLAGS.agent_name, FLAGS.seed)
 
   # NOTE: I didn't use the create_agent from pretrained because I need
    # to also load the replay buffer in this case
@@ -126,63 +137,112 @@ def main(unused_argv):
   checkpoints = pretrained_metric_dqn.get_checkpoints(ckpt_dir, max_checkpoints=100)
 
   # TODO: Load experience fixed experience replay buffer
-  agent._replay.load(ckpt_dir, iteration_number=0)
+  agent._replay.load(ckpt_dir, iteration_number=1)
 
-  stats = collections.OrderedDict()
+  for idx, checkpoint in enumerate(checkpoints):
+    # Load the checkpoint.
+    pretrained_metric_dqn.reload_checkpoint(agent, checkpoint)
+    logging.info('Checkpoint loaded: %s', checkpoint)
 
-  # TODO: Sampled experience and calculate metrics
-  num_samples = 2 # 2 * 1024 (1024 is the batch size)
-  features = []
-  residuals = []
-  for i in range(num_samples):
-    eval_batch = agent._get_outputs(agent_id='online',
-                                    next_states=False, 
-                                    intermediates=True)
+    stats = collections.OrderedDict()
+
+    # TODO: Sampled experience and calculate metrics
+    num_samples = 2 # 2 * 1024 (1024 is the batch size)
+    features = []
+    residuals = []
+    batch_losses = []
+    batch_bellman_losses = []
+    batch_metric_losses = []
+    experience_distances = []
+    grads = []
+
+    for i in range(num_samples):
+      eval_batch = agent._get_outputs(agent_id='online',
+                                      next_states=False, 
+                                      intermediates=True)
+      
+      eval_target_batch = agent._get_outputs(agent_id='target',
+                                      curr_states=False,
+                                      next_states=True,
+                                      intermediates=False)
+      
+      sampled_batch = agent._sample_batch_for_statistics()
+      loss_weights = jnp.ones(sampled_batch['state'].shape[0])
+
+      (loss, 
+      batch_loss, 
+      batch_bellman_loss, 
+      batch_metric_loss, 
+      experience_distances, 
+      grad) = step_forward(
+          agent.network_def,
+          agent.online_params,
+          agent.target_network_params,
+          eval_batch['state'],
+          eval_batch['action'],
+          eval_batch['next_state'],
+          eval_batch['reward'],
+          eval_batch['terminal'],
+          agent.cumulative_gamma,
+          agent._mico_weight,
+          agent._distance_fn,
+          loss_weights,
+          agent._bper_weight
+        )
+      
+      gamma = 0.99
+      features.append(eval_batch['output'][0].representation)
+      residuals.append(eval_batch['output'][0].representation - gamma * eval_target_batch['output_next'].representation)
+      batch_losses.append(batch_loss)
+      batch_bellman_losses.append(batch_bellman_loss)
+      batch_metric_losses.append(batch_metric_loss)
+      experience_distances.append(experience_distances)
+      grads.append(grad)
+
+
+    # Concatenate the features
+    features_matrix = np.concatenate(features, axis=0)
+    residuals_matrix = np.concatenate(residuals, axis=0)
+    batch_losses_array = np.concatenate(batch_losses, axis=0)
+    batch_bellman_losses_array = np.concatenate(batch_bellman_losses, axis=0)
+    batch_metric_losses_array = np.concatenate(batch_metric_losses, axis=0)
+    experience_distances_array = np.concatenate(experience_distances, axis=0)
+    grad_matrix = np.concatenate(grads, axis=0)
+
+    # Log srank
+    stats["Eval/Srank"] = eval_utils.log_srank(features_matrix)
+
+    # Log dormant neurons NOTE: it only uses the last batch
+    stats["Eval/DormantPercentage"] = eval_utils.log_dormant_percentage(eval_batch['output'][1])
+
+    # Log td-Residuals norm
+    stats["Eval/TD-Residuals"] = eval_utils.log_avg_norm(residuals_matrix)
+
+    # Log representation norm
+    stats["Eval/RepresentationNorm"] = eval_utils.log_avg_norm(features_matrix)
+
+    # Log gradient norm
+    stats["Eval/GradientNorm"] = eval_utils.log_avg_norm(grad_matrix)
+
+    if iter % 99 == 0:
+      # Save the covariance matrix of grad matrix
+      np.save(osp.join(ckpt_dir, 'grad_covariance_matrix.npy'), np.cov(grad_matrix, rowvar=False))
+
+    # Log the loss variance
+    stats["Eval/LossVarianceTotal"] = np.var(batch_losses_array)
+    stats["Eval/LossVarianceBellmanLoss"] = np.var(batch_bellman_losses_array)
+    stats["Eval/LossVarianceMetricLoss"] = np.var(batch_metric_losses_array)
+
+    # Log the average bisimulation distance
+    stats["Eval/AverageBisimulationDistance"] = np.mean(experience_distances_array)
+    stats["Eval/StdBisimulationDistance"] = np.var(experience_distances_array)
+
+    with agent.summary_writer.as_default():
+      for key, value in stats.items():
+        tf.summary.scalar(key, value, step=(idx + 1) * 1000_000)
+      
+      agent.summary_writer.flush()
     
-    eval_target_batch = agent._get_outputs(agent_id='target',
-                                    curr_states=False,
-                                    next_states=True,
-                                    intermediates=False)
-    
-    features.append(eval_batch['output'][0].representation)
-    gamma = 0.99
-    residuals.append(eval_batch['output'][0].representation - gamma * eval_target_batch['output_next'].representation)
-
-  # Concatenate the features
-  features_matrix = np.concatenate(features, axis=0)
-  residuals_matrix = np.concatenate(residuals, axis=0)
-
-  # Log srank
-  stats["Eval/Srank"] = eval_utils.log_srank(features_matrix)
-
-  # Log dormant neurons NOTE: it only uses the last batch
-  stats["Eval/DormantPercentage"] = eval_utils.log_dormant_percentage(eval_batch['output'][1])
-
-  # Log td-Residuals norm
-  stats["Eval/TD-Residuals"] = eval_utils.log_td_residuals_avg_norm(residuals_matrix)
-
-  # Log representation norm
-  stats["Eval/RepresentationNorm"] = eval_utils.log_representation_avg_norm(features_matrix)
-
-  # Log gradient norm
-
-  for key, value in stats.items():
-    tf.summary.scalar(key, value, step=self.training_steps * 4)
-
-
-    # metric_distances = metric_utils.current_next_distances(
-    #     curr_outputs.representation, next_outputs.representation, self._distance_fn)
-    # metric_stats.update_running_stats(metric_distances)
-
-  
-  
-
-  
-
-  # Load the checkpoint.
-  pretrained_metric_dqn.reload_checkpoint(agent, checkpoints[-1])
-  logging.info('Checkpoint loaded successfully.')
-
 if __name__ == '__main__':
   flags.mark_flag_as_required('checkpoint_dir')
   app.run(main)
