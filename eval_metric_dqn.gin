@@ -18,10 +18,11 @@ JaxDQNAgent.epsilon_train = 0.01
 JaxDQNAgent.epsilon_eval = 0.001
 JaxDQNAgent.epsilon_decay_period = 250_000  # agent steps
 JaxDQNAgent.summary_writing_frequency = 250_000 # only for losses
-MetricDQNBPERAgent.replay_scheme = 'prioritized'
+MetricDQNBPERAgent.replay_scheme = 'uniform'
 MetricDQNBPERAgent.bper_weight = 1 # BPER
 MetricDQNBPERAgent.log_dynamics_stats = False
 MetricDQNBPERAgent.log_replay_buffer_stats = False
+MetricDQNBPERAgent.batch_size_statistics = 1024
 
 # Note: We are using the Adam optimizer by default for JaxDQN, which differs
 #       from the original NatureDQN and the dopamine TensorFlow version. In
@@ -34,14 +35,11 @@ create_optimizer.eps = 1.5e-4
 atari_lib.create_atari_environment.game_name = 'Pong'
 # Sticky actions with probability 0.25, as suggested by (Machado et al., 2017).
 atari_lib.create_atari_environment.sticky_actions = True
-create_runner.schedule = 'continuous_train'
-create_metric_agent.debug_mode = False
-Runner.num_iterations = 100
-Runner.training_steps = 30_000  # agent steps
-Runner.max_steps_per_episode = 27_000  # agent steps
 
 CustomReplayBuffer.max_capacity = 1_000_000
+CustomReplayBuffer.batch_size = 32
+ReplayBuffer.max_capacity = 1_000_000
+ReplayBuffer.batch_size = 32
 CustomReplayBuffer.checkpoint_duration = 2
 Checkpointer.checkpoint_duration = 100
 PrioritizedSamplingDistribution.max_capacity = 1_000_000
-CustomReplayBuffer.batch_size = 32

@@ -70,8 +70,8 @@ def train(network_def, online_params, target_params, optimizer, optimizer_state,
         representations, target_r, distance_fn)
     target_dist = metric_utils.target_distances(
         target_next_r, rewards, distance_fn, cumulative_gamma)
-    metric_loss = jnp.mean(jax.vmap(losses.huber_loss)(online_dist,
-                                                       target_dist))
+    batch_metric_loss = jax.vmap(losses.huber_loss)(online_dist, target_dist)
+    metric_loss = jnp.mean(loss_multipliers * batch_metric_loss)
     loss = ((1. - mico_weight) * bellman_loss +
             mico_weight * metric_loss)
     
@@ -134,8 +134,8 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                bper_weight=0, # PER: 0 and BPER: 1
                method_scheme='scaling', # 'softmax', 'softmax_weight'
                log_dynamics_stats=False,
+               log_replay_buffer_stats=False,
                batch_size_statistics=1024,   #512, # 256,
-               log_replay_buffer_stats=None,
                game_name=None,
                fixed_agent_ckpt=None
                ):
@@ -149,8 +149,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     self._batch_size_statistics = batch_size_statistics
 
     self.game_name = game_name
-    self.fixed_agent_ckpt = fixed_agent_ckpt.format(self.game_name)
-    self._fixed_pretrained_agent = self._create_fixed_agent()
+    self._fixed_pretrained_agent = self._create_fixed_agent(fixed_agent_ckpt)
     
     self._exponential_normalizer = metric_utils.ExponentialNormalizer()
 
@@ -188,18 +187,20 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     logging.info('\t summary_writing_frequency: %d', self.summary_writing_frequency)
     logging.info('\t allow_partial_reload: %s', self.allow_partial_reload)
 
-  def _create_fixed_agent(self):
+  def _create_fixed_agent(self, fixed_agent_ckpt):
+    
+    if fixed_agent_ckpt is None:
+      return None
 
-    if self.fixed_agent_ckpt is None:
-      raise ValueError('The fixed agent checkpoint is None. Please provide a valid checkpoint.')
-
+    fixed_agent_ckpt.format(self.game_name)
+    
     agent = pretrained_metric_dqn.create_agent(
           num_actions = self.num_actions,
           agent_name='metric_dqn', 
         )
 
     # NOTE: Change this according to where the pretrained agent is saved
-    pretrained_metric_dqn.reload_checkpoint(agent, self.fixed_agent_ckpt)
+    pretrained_metric_dqn.reload_checkpoint(agent, fixed_agent_ckpt)
 
     return agent
 
@@ -246,18 +247,20 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
 
   def _get_outputs(self, 
                    agent_id = "fixed", # "fixed" or "online" or "target"
+                   curr_states = True,
                    next_states = False,
                    intermediates = True):
       batch = self._sample_batch_for_statistics()  # Non-JIT part
       
       if agent_id == "fixed":
         # NOTE: I can use the fixed agent to get the features
-        batch['output'] =  eval_utils.get_features(
-            self._fixed_pretrained_agent.network_def,
-            self._fixed_pretrained_agent.online_params,
-            batch['state'],
-            intermediates
-        )
+        if curr_states:
+          batch['output'] =  eval_utils.get_features(
+              self._fixed_pretrained_agent.network_def,
+              self._fixed_pretrained_agent.online_params,
+              batch['state'],
+              intermediates
+          )
         if next_states:
           batch['output_next']  =  eval_utils.get_features(
               self._fixed_pretrained_agent.network_def,
@@ -266,12 +269,13 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
               intermediates
           )
       elif agent_id == "online":
-        batch["output"] =  eval_utils.get_features(
-            self.network_def,
-            self.online_params,
-            batch['state'],
-            intermediates
-        )
+        if curr_states:
+          batch["output"] =  eval_utils.get_features(
+              self.network_def,
+              self.online_params,
+              batch['state'],
+              intermediates
+          )
         if next_states:
           batch["output_next"] =  eval_utils.get_features(
               self.network_def,
@@ -280,12 +284,13 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
               intermediates
           )
       elif agent_id == "target":
-        batch["output"] =  eval_utils.get_features(
-            self.network_def,
-            self.target_network_params,
-            batch['state'],
-            intermediates
-        )
+        if curr_states:
+          batch["output"] =  eval_utils.get_features(
+              self.network_def,
+              self.target_network_params,
+              batch['state'],
+              intermediates
+          )
         if next_states:
           batch["output_next"] =  eval_utils.get_features(
               self.network_def,

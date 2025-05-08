@@ -4,6 +4,7 @@ import gin
 import functools
 from dopamine.jax import losses
 from typing import Tuple, NamedTuple
+import numpy as np
 
 @functools.partial(jax.jit, static_argnames=('threshold', 'sub_mean_score'))
 def log_dormant_percentage(batch_activations, threshold=0.0, sub_mean_score=False):
@@ -104,7 +105,31 @@ def log_td_errors(sampled_batch, network_def, target_params, cumulative_gamma):
     replay_chosen_q = jax.vmap(lambda x, y: x[y])(q_values, sampled_batch['action'])
     return jnp.abs(replay_chosen_q - bellman_target)
 
+def log_srank(feature_matrix, thresh=1e-5):
+    singular_vals = np.linalg.svd(
+      feature_matrix, full_matrices=False, compute_uv=False)
+    
+    return max(np.sum(singular_vals >= thresh), 1)
 
+def log_td_residuals_avg_norm(residuals_matrix):
+    """Compute the average norm of the TD residuals."""
+    # Compute the L2 norm of each row
+    norms = np.linalg.norm(residuals_matrix, axis=1)
+    
+    # Compute the average norm
+    avg_norm = np.mean(norms)
+    
+    return avg_norm
+
+def log_representation_avg_norm(feature_matrix):
+    """Compute the average norm of the representation."""
+    # Compute the L2 norm of each row
+    norms = np.linalg.norm(feature_matrix, axis=1)
+    
+    # Compute the average norm
+    avg_norm = np.mean(norms)
+    
+    return avg_norm
 
 class RunningStats():#
     def __init__(self):
