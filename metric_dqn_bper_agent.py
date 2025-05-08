@@ -70,8 +70,8 @@ def train(network_def, online_params, target_params, optimizer, optimizer_state,
         representations, target_r, distance_fn)
     target_dist = metric_utils.target_distances(
         target_next_r, rewards, distance_fn, cumulative_gamma)
-    batch_metric_loss = jax.vmap(losses.huber_loss)(online_dist, target_dist)
-    metric_loss = jnp.mean(loss_multipliers * batch_metric_loss)
+    metric_loss = jnp.mean(jax.vmap(losses.huber_loss)(online_dist,
+                                                       target_dist))
     loss = ((1. - mico_weight) * bellman_loss +
             mico_weight * metric_loss)
     
