@@ -108,7 +108,8 @@ for GAME_NAME in "${GAME_LIST[@]}"; do
             --gin_files=dqn.gin \
             --game_name=${GAME_NAME} \
             --agent_name=${AGENT_NAME} \
-            --seed=${SEED}
+            --seed=${SEED} \
+            --gin_bindings="MetricDQNBPERAgent.replay_scheme='uniform'"            
     fi
 
     # Calculate runtime for the current game
