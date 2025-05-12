@@ -33,6 +33,7 @@ def reload_jax_checkpoint(agent, bundle_dictionary):
   if bundle_dictionary is not None:
     agent.state = bundle_dictionary['state']
     agent.online_params = bundle_dictionary['online_params']
+    agent.target_network_params = bundle_dictionary['target_params']
     agent.optimizer = dqn_agent.create_optimizer(agent._optimizer_name)
     if 'optimizer_state' in bundle_dictionary:
       agent.optimizer_state = bundle_dictionary['optimizer_state']

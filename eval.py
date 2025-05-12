@@ -210,11 +210,11 @@ def main(unused_argv):
 
 
     # Concatenate the features
-    features_matrix = np.concatenate(features, axis=0)
-    residuals_matrix = np.concatenate(residuals, axis=0)
-    batch_bellman_losses_array = np.concatenate(batch_bellman_losses, axis=0)
-    batch_metric_losses_array = np.concatenate(batch_metric_losses, axis=0)
-    experience_distances_array = np.concatenate(experience_distances_list, axis=0)
+    features_matrix = jnp.concatenate(features, axis=0)
+    residuals_matrix = jnp.concatenate(residuals, axis=0)
+    batch_bellman_losses_array = jnp.concatenate(batch_bellman_losses, axis=0)
+    batch_metric_losses_array = jnp.concatenate(batch_metric_losses, axis=0)
+    experience_distances_array = jnp.concatenate(experience_distances_list, axis=0)
 
     # Log srank
     stats["Eval/Srank"] = eval_utils.log_srank(features_matrix)
@@ -229,65 +229,12 @@ def main(unused_argv):
     stats["Eval/RepresentationNorm"] = eval_utils.log_avg_norm(features_matrix)
 
     # Log the loss variance
-    stats["Eval/LossVarianceBellmanLoss"] = np.var(batch_bellman_losses_array)
-    stats["Eval/LossVarianceMetricLoss"] = np.var(batch_metric_losses_array)
+    stats["Eval/LossVarianceBellmanLoss"] = jnp.var(batch_bellman_losses_array)
+    stats["Eval/LossVarianceMetricLoss"] = jnp.var(batch_metric_losses_array)
 
     # Log the average bisimulation distance
-    stats["Eval/AverageBisimulationDistance"] = np.mean(experience_distances_array)
-    stats["Eval/StdBisimulationDistance"] = np.var(experience_distances_array)
-
-
-    # # NOTE: in order to get the gradient matrix I need to calculate per example
-    # # NOTE: I use 2 samples because I need at least 2 for getting the metric loss
-    # sampled_batch = agent._sample_batch_for_statistics(8)
-    # num_samples = sampled_batch['state'].shape[0]
-    # grads = []
-
-    # for i in range(0,num_samples - 1, 2):
-
-    #   loss_weights = jnp.ones(sampled_batch['state'][i:i+2].shape[0])
-
-    #   (loss, 
-    #   batch_bellman_loss, 
-    #   batch_metric_loss, 
-    #   experience_distances, 
-    #   grad) = step_forward(
-    #       agent.network_def,
-    #       agent.online_params,
-    #       agent.target_network_params,
-    #       sampled_batch['state'][i:i+2],
-    #       sampled_batch['action'][i:i+2],
-    #       sampled_batch['next_state'][i:i+2],
-    #       sampled_batch['reward'][i:i+2],
-    #       sampled_batch['terminal'][i:i+2],
-    #       agent.cumulative_gamma,
-    #       agent._mico_weight,
-    #       agent._distance_fn,
-    #       loss_weights,
-    #       agent._bper_weight
-    #     )
-
-    #   batch_bellman_losses.append(batch_bellman_loss)
-    #   batch_metric_losses.append(batch_metric_loss)
-    #   experience_distances_list.append(experience_distances)
-    #   grads.append(grad)
-
-    # batch_bellman_losses_array = np.concatenate(batch_bellman_losses, axis=0)
-    # batch_metric_losses_array = np.concatenate(batch_metric_losses, axis=0)
-    # experience_distances_array = np.concatenate(experience_distances_list, axis=0)
-
-
-    # # Log gradient norm
-    # grad_matrix = eval_utils.get_grad_matrix(grads)
-    # stats["Eval/GradientNorm"] = eval_utils.log_avg_norm(grad_matrix)
-
-    # if idx % 99 == 0:
-    #   # Save the covariance matrix of grad matrix
-    #   npy_path = os.path.join(experiment_dir, 'npy_files')
-    #   if not os.path.exists(npy_path):
-    #     os.makedirs(npy_path)
-    #   covariance_matrix_grads = jnp.cov(grad_matrix, rowvar=False)
-    #   np.save(osp.join(npy_path, f'grad_covariance_matrix_{iter}.npy'), covariance_matrix_grads)
+    stats["Eval/AverageBisimulationDistance"] = jnp.mean(experience_distances_array)
+    stats["Eval/StdBisimulationDistance"] = jnp.var(experience_distances_array)
 
     with agent.summary_writer.as_default():
       for key, value in stats.items():

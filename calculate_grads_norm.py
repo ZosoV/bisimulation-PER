@@ -141,7 +141,8 @@ def main(unused_argv):
 
   # Collect batches for statistics
   # NOTE: I only need one because I will use each 2 experience to calculate the gradient
-  sampled_batch = agent._sample_batch_for_statistics(128)
+  batch_size_for_cov_matrix = 128
+  sampled_batch = agent._sample_batch_for_statistics(256)
 
   for idx, checkpoint in enumerate(checkpoints):
     # Load the checkpoint.
@@ -179,8 +180,10 @@ def main(unused_argv):
           agent._bper_weight
         )
       
-      grads_norms.append(jnp.linalg.norm(eval_utils.flatten_grads(grad)))
-      grads.append(grad)
+      flatten_grad = eval_utils.flatten_grads(grad)
+      grads_norms.append(jnp.linalg.norm(flatten_grad))
+      if idx % 99 == 0 and i < batch_size_for_cov_matrix:
+        grads.append(flatten_grad)
 
 
     # Log gradient norm
@@ -188,14 +191,18 @@ def main(unused_argv):
 
     if idx % 99 == 0: # TODO: idx + 1
       # Save the covariance matrix of grad matrix
-      grad_matrix = eval_utils.get_grad_matrix(grads)
+      grad_matrix = jnp.stack(grads)
 
       npy_path = os.path.join(experiment_dir, 'npy_files')
       if not os.path.exists(npy_path):
         os.makedirs(npy_path)
-      covariance_matrix_grads = jnp.cov(grad_matrix, rowvar=False)
-      np.save(osp.join(npy_path, f'grad_covariance_matrix_{iter}.npy'), covariance_matrix_grads)
 
+      covariance_matrix_grads = eval_utils.compute_covariance_matrix(grad_matrix)
+      np.save(osp.join(npy_path, f'grad_covariance_matrix_{iter}.npy'), covariance_matrix_grads)
+      # NOTE: For plotting use a k-means clustering algorithm with k = 10
+      # and permute the rows and columns of the covariance matrix
+
+      
     with agent.summary_writer.as_default():
       for key, value in stats.items():
         tf.summary.scalar(key, value, step=(idx + 1) * 1000_000)
