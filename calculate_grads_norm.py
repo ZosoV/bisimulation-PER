@@ -182,14 +182,14 @@ def main(unused_argv):
       
       flatten_grad = eval_utils.flatten_grads(grad)
       grads_norms.append(jnp.linalg.norm(flatten_grad))
-      if idx % 99 == 0 and i < batch_size_for_cov_matrix:
+      if (idx+1) % 100 == 0 and i < batch_size_for_cov_matrix:
         grads.append(flatten_grad)
 
 
     # Log gradient norm
     stats["Eval/GradientNorm"] = np.mean(grads_norms)
 
-    if idx % 99 == 0: # TODO: idx + 1
+    if (idx+1) % 100 == 0:
       # Save the covariance matrix of grad matrix
       grad_matrix = jnp.stack(grads)
 
