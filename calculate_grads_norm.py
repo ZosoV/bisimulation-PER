@@ -198,7 +198,7 @@ def main(unused_argv):
         os.makedirs(npy_path)
 
       covariance_matrix_grads = eval_utils.compute_covariance_matrix(grad_matrix)
-      np.save(osp.join(npy_path, f'grad_covariance_matrix_{iter}.npy'), covariance_matrix_grads)
+      np.save(osp.join(npy_path, f'grad_covariance_matrix_{idx}.npy'), covariance_matrix_grads)
       # NOTE: For plotting use a k-means clustering algorithm with k = 10
       # and permute the rows and columns of the covariance matrix
 
