@@ -27,10 +27,12 @@ AGENTS = [
 flags.DEFINE_string('base_dir', "logs/",
                     'Base directory to host all required sub-directories.')
 flags.DEFINE_enum('agent_name', "metric_dqn", AGENTS, 'Name of the agent.')
-flags.DEFINE_string('checkpoint_dir', "checkpoints/Alien/metric_dqn/118398/", 'Checkpoint path to use')
+flags.DEFINE_string('checkpoint_dir', "logs/Alien/metric_dqn/118398/", 'Checkpoint path to use')
 flags.DEFINE_string('game_name', 'Alien', 'Name of game')
 flags.DEFINE_string('seed', "118398",
                     'Random seed to use for the experiment.')
+flags.DEFINE_string('replay_buffer_ckpt_dir', "logs/Alien/metric_dqn/118398/", 'Replay Buffer Checkpoint path to use')
+
 
 
 flags.DEFINE_multi_string(
@@ -124,8 +126,13 @@ def main(unused_argv):
       game_name=FLAGS.game_name, sticky_actions=True)
   
   base_dir = FLAGS.base_dir
-  experiment_dir = os.path.join(base_dir, FLAGS.game_name, FLAGS.agent_name, FLAGS.seed)
+  experiment_dir = os.path.join(base_dir, FLAGS.game_name, FLAGS.agent_name, FLAGS.seed, 'eval_metrics')
   summary_writer = experiment_dir
+
+  # Create folder if it doesn't exist
+  if not os.path.exists(experiment_dir):
+    os.makedirs(experiment_dir)
+  logging.info('Experiment directory: %s', experiment_dir)
 
   # NOTE: I didn't use the create_agent from pretrained because I need
    # to also load the replay buffer in this case
@@ -137,12 +144,13 @@ def main(unused_argv):
   checkpoints = pretrained_metric_dqn.get_checkpoints(ckpt_dir, max_checkpoints=100)
 
   # TODO: Load experience fixed experience replay buffer
-  agent._replay.load(ckpt_dir, iteration_number=1)
+  rb_ckp_dir = osp.join(FLAGS.replay_buffer_ckpt_dir, 'checkpoints')
+  agent._replay.load(rb_ckp_dir, iteration_number=99)
 
   # Collect batches for statistics
   # NOTE: This will be fixed along the whole experiment
   # and only the outputs will change
-  num_batches = 2 # 2 * 1024 (1024 is the batch size)
+  num_batches = 2 # 2 * 1024 (2048 is the batch size)
   batches_collected = []
   for i in range(num_batches):
     sampled_batch = agent._sample_batch_for_statistics()
@@ -236,11 +244,12 @@ def main(unused_argv):
     stats["Eval/AverageBisimulationDistance"] = jnp.mean(experience_distances_array)
     stats["Eval/StdBisimulationDistance"] = jnp.var(experience_distances_array)
 
-    with agent.summary_writer.as_default():
-      for key, value in stats.items():
-        tf.summary.scalar(key, value, step=(idx + 1) * 1000_000)
-      
-      agent.summary_writer.flush()
+    with tf.device('/CPU:0'):
+      with agent.summary_writer.as_default():
+        for key, value in stats.items():
+          tf.summary.scalar(key, value, step=(idx + 1) * 1000_000)
+        
+        agent.summary_writer.flush()
     
 if __name__ == '__main__':
   flags.mark_flag_as_required('checkpoint_dir')

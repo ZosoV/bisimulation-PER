@@ -136,9 +136,10 @@ def flatten_grads(batch_grads):
     return jnp.concatenate([jnp.ravel(g) for g in jax.tree_util.tree_leaves(batch_grads)])
 
 def compute_covariance_matrix(matrix):
+    # NOTE: grad_matrix is a matrix of shape (batch_size, num_parameters)
     # NOTE: Computed according direction on Lyle C. et al 2023
-    norms = jnp.linalg.norm(matrix, axis=1, keepdims=True)
-    matrix = matrix / (norms + 1e-8)  # Avoid division by zero
+    # norms = jnp.linalg.norm(matrix, axis=1, keepdims=True)
+    matrix = matrix / (jnp.linalg.norm(matrix, axis=1, keepdims=True) + 1e-8)  # Avoid division by zero
     return jnp.dot(matrix, matrix.T) 
     
 class RunningStats():#

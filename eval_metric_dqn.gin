@@ -35,6 +35,8 @@ create_optimizer.eps = 1.5e-4
 atari_lib.create_atari_environment.game_name = 'Pong'
 # Sticky actions with probability 0.25, as suggested by (Machado et al., 2017).
 atari_lib.create_atari_environment.sticky_actions = True
+Runner.evaluation_steps = 20480  # agent steps
+Runner.max_steps_per_episode = 27_000  # agent steps
 
 CustomReplayBuffer.max_capacity = 1_000_000
 CustomReplayBuffer.batch_size = 32
