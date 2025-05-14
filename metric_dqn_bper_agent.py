@@ -421,7 +421,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                   # 10 minibatches of 1024 will be 10240 samples
                   # 4 minibatches of 1024 will be 4096 samples
 
-                  num_batches = 5 
+                  num_batches = 4 
                   batches_collected = []
                   for i in range(num_batches):
                     sampled_batch = self._sample_batch_for_statistics()
