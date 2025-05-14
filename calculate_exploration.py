@@ -133,7 +133,7 @@ class WrapperMetriDQNBPERAgent(metric_dqn_bper_agent.MetricDQNBPERAgent):
         curr_outputs.representation, next_outputs.representation, self._distance_fn)
     self._metric_stats.update_running_stats(metric_distances)
 
-    euclidean_distances = jnp.sqrt(jnp.sum((curr_outputs.representation - next_outputs.representation)**2, axis=1))
+    euclidean_distances = jnp.linalg.norm(curr_outputs.representation - next_outputs.representation, axis=1)
     self._euclidean_stats.update_running_stats(euclidean_distances)
 
     residual_diffs = jnp.linalg.norm(curr_outputs.representation - self.cumulative_gamma * next_outputs.representation, axis=1)
