@@ -136,6 +136,9 @@ class WrapperMetriDQNBPERAgent(metric_dqn_bper_agent.MetricDQNBPERAgent):
     euclidean_distances = jnp.sqrt(jnp.sum((curr_outputs.representation - next_outputs.representation)**2, axis=1))
     self._euclidean_stats.update_running_stats(euclidean_distances)
 
+    residual_diffs = jnp.linalg.norm(curr_outputs.representation - self.cumulative_gamma * next_outputs.representation, axis=1)
+    self._residuals_stats.update_running_stats(residual_diffs)
+
     eval_batch = self._get_outputs(agent_id='online',
                             next_states=False, 
                             intermediates=False,
@@ -215,9 +218,11 @@ def main(unused_argv):
     stats['Exploration/BisimulationDistanceAvg'] = runner._agent._metric_stats.mean
     stats['Exploration/EuclideanDistanceAvg'] = runner._agent._euclidean_stats.mean
     stats['Exploration/TD-ErrorAvg'] = runner._agent._td_errors_stats.mean
+    stats['Exploration/TD-Residuals'] = runner._agent._residuals_stats.mean
     stats['Exploration/BisimulationDistanceStd'] = jnp.sqrt(runner._agent._metric_stats.variance)
     stats['Exploration/EuclideanDistanceStd'] = jnp.sqrt(runner._agent._euclidean_stats.variance)
     stats['Exploration/TD-ErrorStd'] = jnp.sqrt(runner._agent._td_errors_stats.variance)
+    stats['Exploration/TD-ResidualsStd'] = jnp.sqrt(runner._agent._residuals_stats.variance)
 
     with tf.device('/CPU:0'):
         with runner._agent.summary_writer.as_default():
