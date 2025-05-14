@@ -168,7 +168,7 @@ def main(unused_argv):
     residuals = []
     batch_bellman_losses = []
     batch_metric_losses = []
-    experience_distances_list = []
+    # experience_distances_list = []
     grads = []
 
     for sampled_batch in batches_collected:
@@ -213,7 +213,7 @@ def main(unused_argv):
       residuals.append(sampled_batch['output'][0].representation - agent.cumulative_gamma * sampled_batch['output_next'].representation)
       batch_bellman_losses.append(batch_bellman_loss)
       batch_metric_losses.append(batch_metric_loss)
-      experience_distances_list.append(experience_distances)
+      # experience_distances_list.append(experience_distances)
       grads.append(grad)
 
 
@@ -222,7 +222,7 @@ def main(unused_argv):
     residuals_matrix = jnp.concatenate(residuals, axis=0)
     batch_bellman_losses_array = jnp.concatenate(batch_bellman_losses, axis=0)
     batch_metric_losses_array = jnp.concatenate(batch_metric_losses, axis=0)
-    experience_distances_array = jnp.concatenate(experience_distances_list, axis=0)
+    # experience_distances_array = jnp.concatenate(experience_distances_list, axis=0)
 
     # Log srank
     stats["Eval/Srank"] = eval_utils.log_srank(features_matrix)
@@ -241,8 +241,8 @@ def main(unused_argv):
     stats["Eval/LossVarianceMetricLoss"] = jnp.var(batch_metric_losses_array)
 
     # Log the average bisimulation distance
-    stats["Eval/AverageBisimulationDistance"] = jnp.mean(experience_distances_array)
-    stats["Eval/StdBisimulationDistance"] = jnp.var(experience_distances_array)
+    # stats["Eval/AverageBisimulationDistance"] = jnp.mean(experience_distances_array)
+    # stats["Eval/StdBisimulationDistance"] = jnp.var(experience_distances_array)
 
     with tf.device('/CPU:0'):
       with agent.summary_writer.as_default():

@@ -136,7 +136,6 @@ subject="${subject} [COMPLETED]"
     echo "SLURM Array Task ID: $SLURM_ARRAY_TASK_ID"
     echo "Total runtime: ${days} days, ${hours} hours, ${minutes} minutes"
     echo ""
-    echo "SLURM Output (${slurm_output_file}):"
     cat "${PROJECT_DIR}/${slurm_output_file}" | grep Iteration
 } | mailx -s "$subject" o.v.guarnizocabezas@bham.ac.uk
 
