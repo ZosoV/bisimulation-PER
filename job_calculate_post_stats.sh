@@ -87,7 +87,7 @@ if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
     python -m calculate_grads_norm \
         --base_dir=logs/ \
         --checkpoint_dir="logs/${GAME_NAME}/${AGENT_NAME}_${BPER_SCHEME}/${SEED}/" \
-        --replay_buffer_ckpt_dir="logs/${GAME_NAME}/metric_dqn/118398/" \
+        --replay_buffer_ckpt_dir="logs/${GAME_NAME}/metric_dqn/442081/" \
         --gin_files=eval_metric_dqn.gin \
         --game_name=${GAME_NAME} \
         --agent_name="${AGENT_NAME}_${BPER_SCHEME}" \
