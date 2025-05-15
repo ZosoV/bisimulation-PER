@@ -146,7 +146,7 @@ class CustomReplayBuffer(replay_buffer.ReplayBuffer[replay_buffer.ReplayElementT
                 "using state from 'sampling_distribution'."
             )
             self._uniform_distribution.from_state_dict(
-                state_dict=['sampling_distribution']
+                state_dict['sampling_distribution']
             )
 
         # Restore memory
