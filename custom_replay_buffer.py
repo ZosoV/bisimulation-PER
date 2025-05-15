@@ -9,7 +9,7 @@ import numpy as np
 import gin
 import pickle
 import collections
-
+import logging
 # ReplayElementT = TypeVar('ReplayElementT', bound=elements.ReplayElementProtocol)
 
 
@@ -135,9 +135,19 @@ class CustomReplayBuffer(replay_buffer.ReplayBuffer[replay_buffer.ReplayElementT
             state_dict['sampling_distribution']
         )
 
-        self._uniform_distribution.from_state_dict(
-            state_dict['uniform_distribution']
-        )
+        if 'uniform_distribution' in state_dict:
+            self._uniform_distribution.from_state_dict(
+                state_dict['uniform_distribution']
+            )
+        else:
+            logging.warning(
+                "Checkpoint is missing 'uniform_distribution' state. "
+                "Attempting to initialize UniformSamplingDistribution (self._uniform_distribution) "
+                "using state from 'sampling_distribution'."
+            )
+            self._uniform_distribution.from_state_dict(
+                state_dict=['sampling_distribution']
+            )
 
         # Restore memory
         memory_keys = state_dict['memory']['keys']
