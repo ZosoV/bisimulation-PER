@@ -225,15 +225,23 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
         seed = self._seed, # Seed  fot the fixed uniform distribution
     )
 
-  def _sample_batch_for_statistics(self, batch_size=None):
+  def _sample_batch_for_statistics(self, batch_size=None, uniform=True):
     """Sample elements from the replay buffer."""
     tmp_replay_elements = collections.OrderedDict()
     if batch_size is None:
-      elems, metadata = self._replay.sample_uniform(size = self._batch_size_statistics,
-                                            with_sample_metadata=True)
+      if uniform:
+        elems, metadata = self._replay.sample_uniform(size = self._batch_size_statistics,
+                                              with_sample_metadata=True)
+      else:
+        elems, metadata = self._replay.sample(size = self._batch_size_statistics,
+                                              with_sample_metadata=True)
     else:
-      elems, metadata = self._replay.sample_uniform(size = batch_size,
-                                            with_sample_metadata=True)
+      if uniform:
+        elems, metadata = self._replay.sample_uniform(size = batch_size,
+                                              with_sample_metadata=True)
+      else:
+        elems, metadata = self._replay.sample(size = batch_size,
+                                              with_sample_metadata=True)
     tmp_replay_elements['state'] = elems.state
     tmp_replay_elements['next_state'] = elems.next_state
     tmp_replay_elements['action'] = elems.action
@@ -424,6 +432,11 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                     sampled_batch = self._sample_batch_for_statistics()
                     batches_collected.append(sampled_batch)
 
+                  prioritized_batches_collected = []
+                  for i in range(num_batches):
+                    sampled_batch = self._sample_batch_for_statistics(uniform=False)
+                    prioritized_batches_collected.append(sampled_batch)
+
                   metric_stats = eval_utils.RunningStats()
                   euclidean_stats = eval_utils.RunningStats()
                   td_residuals_stats = eval_utils.RunningStats()
@@ -454,6 +467,36 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
 
                   stats['Stats/TD-Residuals'] = td_residuals_stats.mean
                   stats['Stats/TD-ResidualsStd'] = jnp.sqrt(td_residuals_stats.variance)
+
+
+                  prioritized_metric_stats = eval_utils.RunningStats()
+                  prioritized_euclidean_stats = eval_utils.RunningStats()
+                  prioritized_td_residuals_stats = eval_utils.RunningStats()
+
+                  for sampled_batch in prioritized_batches_collected:
+                    eval_batch = self._get_outputs(agent_id='fixed', 
+                                                  next_states=True, 
+                                                  intermediates=False,
+                                                  batch=sampled_batch)
+                  
+                    curr_outputs, next_outputs = eval_batch['output'], eval_batch['output_next']
+
+                    prioritized_metric_distances = metric_utils.current_next_distances(
+                        curr_outputs.representation, next_outputs.representation, self._distance_fn)
+                    prioritized_metric_stats.update_running_stats(prioritized_metric_distances)
+
+                    prioritized_euclidean_distances = jnp.linalg.norm(curr_outputs.representation - next_outputs.representation, axis=1)
+                    prioritized_euclidean_stats.update_running_stats(prioritized_euclidean_distances)
+
+                    prioritized_residual_diffs = jnp.linalg.norm(curr_outputs.representation - self.cumulative_gamma * next_outputs.representation, axis=1)
+                    prioritized_td_residuals_stats.update_running_stats(prioritized_residual_diffs)
+
+                  stats['Stats/PrioritizedBisimulationDistanceAvg'] = prioritized_metric_stats.mean
+                  stats['Stats/PrioritizedBisimulationDistanceStd'] = jnp.sqrt(prioritized_metric_stats.variance)
+                  stats['Stats/PrioritizedEuclideanDistanceAvg'] = prioritized_euclidean_stats.mean
+                  stats['Stats/PrioritizedEuclideanDistanceStd'] = jnp.sqrt(prioritized_euclidean_stats.variance)
+                  stats['Stats/PrioritizedTD-ResidualsAvg'] = prioritized_td_residuals_stats.mean
+                  stats['Stats/PrioritizedTD-ResidualsStd'] = jnp.sqrt(prioritized_td_residuals_stats.variance)
 
                   td_errors_stats = eval_utils.RunningStats()
                   online_metric_stats = eval_utils.RunningStats()
@@ -496,6 +539,44 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                   stats['Stats/OnlineEuclideanDistanceAvg'] = online_euclidean_stats.mean
                   stats['Stats/OnlineEuclideanDistanceStd'] = jnp.sqrt(online_euclidean_stats.variance)
 
+                  prioritized_td_errors_stats = eval_utils.RunningStats()
+                  prioritized_online_metric_stats = eval_utils.RunningStats()
+                  prioritized_online_td_residuals_stats = eval_utils.RunningStats()
+                  prioritized_online_euclidean_stats = eval_utils.RunningStats()
+                  for sampled_batch in prioritized_batches_collected:
+                    eval_batch = self._get_outputs(agent_id='online',
+                                            next_states=True,
+                                            intermediates=False,
+                                            batch=sampled_batch)
+
+                    prioritized_td_errors = eval_utils.log_td_errors(
+                        eval_batch,
+                        self.network_def,
+                        self.target_network_params,
+                        self.cumulative_gamma
+                        )
+                    prioritized_td_errors_stats.update_running_stats(prioritized_td_errors)
+
+                    prioritized_online_metric_distances = metric_utils.current_next_distances(
+                        eval_batch['output'].representation,
+                        eval_batch['output_next'].representation,
+                        self._distance_fn)
+                    prioritized_online_metric_stats.update_running_stats(prioritized_online_metric_distances)
+
+                    prioritized_online_residuals_diff = jnp.linalg.norm(eval_batch['output'].representation - self.cumulative_gamma * eval_batch['output_next'].representation, axis=1)
+                    prioritized_online_td_residuals_stats.update_running_stats(prioritized_online_residuals_diff)
+
+                    prioritized_online_euclidean_distances = jnp.linalg.norm(eval_batch['output'].representation - eval_batch['output_next'].representation, axis=1)
+                    prioritized_online_euclidean_stats.update_running_stats(prioritized_online_euclidean_distances)
+                  stats['Stats/PrioritizedTD-ErrorAvg'] = prioritized_td_errors_stats.mean
+                  stats['Stats/PrioritizedTD-ErrorStd'] = jnp.sqrt(prioritized_td_errors_stats.variance)
+                  stats['Stats/PrioritizedOnlineBisimulationDistanceAvg'] = prioritized_online_metric_stats.mean
+                  stats['Stats/PrioritizedOnlineBisimulationDistanceStd'] = jnp.sqrt(prioritized_online_metric_stats.variance)
+                  stats['Stats/PrioritizedOnlineTD-ResidualsAvg'] = prioritized_online_td_residuals_stats.mean
+                  stats['Stats/PrioritizedOnlineTD-ResidualsStd'] = jnp.sqrt(prioritized_online_td_residuals_stats.variance)
+                  stats['Stats/PrioritizedOnlineEuclideanDistanceAvg'] = prioritized_online_euclidean_stats.mean
+                  stats['Stats/PrioritizedOnlineEuclideanDistanceStd'] = jnp.sqrt(prioritized_online_euclidean_stats.variance)
+
         
                 if self._log_dynamics_stats:
                   eval_batch = self._get_outputs(agent_id='online',
@@ -503,6 +584,13 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                                             intermediates=True,
                                             batch=batches_collected[0])
                   stats['Stats/DormantPercentage'] = eval_utils.log_dormant_percentage(
+                    eval_batch["output"][1])
+                  
+                  eval_batch = self._get_outputs(agent_id='online',
+                                            next_states=False, 
+                                            intermediates=True,
+                                            batch=prioritized_batches_collected[0])
+                  stats['Stats/PrioritizedDormantPercentage'] = eval_utils.log_dormant_percentage(
                     eval_batch["output"][1])
 
                 for key, value in stats.items():
