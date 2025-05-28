@@ -89,7 +89,7 @@ if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
         --base_dir=logs/ \
         --gin_files=dqn.gin \
         --game_name=${GAME_NAME} \
-        --agent_name="${AGENT_NAME}_${BPER_SCHEME}" \
+        --agent_name="${AGENT_NAME}_${BPER_SCHEME}_${SCALING_FACTOR}" \
         --seed=${SEED} \
         --gin_bindings="MetricDQNBPERAgent.method_scheme='${BPER_SCHEME}'" \
         --gin_bindings="MetricDQNBPERAgent.scaling_factor=${SCALING_FACTOR}"
