@@ -137,13 +137,14 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                log_replay_buffer_stats=False,
                batch_size_statistics=1024,   #512, # 256,
                game_name=None,
-               fixed_agent_ckpt=None
+               fixed_agent_ckpt=None,
+               scaling_factor=15488, # 15488 is the size of the representation when using the ataria network with input size 84x84x4
                ):
     self._mico_weight = mico_weight
     self._distance_fn = distance_fn
     self._method_scheme = method_scheme
     self.num_actions = num_actions
-
+    self._scaling_factor = scaling_factor
     self._log_dynamics_stats = log_dynamics_stats
     self._log_replay_buffer_stats = log_replay_buffer_stats
     self._batch_size_statistics = batch_size_statistics
@@ -374,7 +375,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
             experience_distances = self._exponential_normalizer.normalize(experience_distances)
             priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
           else:
-            experience_distances = experience_distances / jnp.sqrt(15488) 
+            experience_distances = experience_distances / jnp.sqrt(self._scaling_factor) 
             # NOTE: 15488 is the size of the representation when using the ataria network with input size 84x84x4        
             if self._method_scheme == 'scaling':
               priorities = (1 - self._bper_weight) * batch_td_error + self._bper_weight * experience_distances # experience_distances
