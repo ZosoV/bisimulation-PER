@@ -523,6 +523,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                         self._distance_fn)
                     online_metric_stats.update_running_stats(online_metric_distances)
 
+                    # NOTE: This incorrectly done TD-residuals should use the target network for the output_next representation
                     online_residuals_diff = jnp.linalg.norm(eval_batch['output'].representation - self.cumulative_gamma * eval_batch['output_next'].representation, axis=1)
                     online_td_residuals_stats.update_running_stats(online_residuals_diff)
 

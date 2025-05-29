@@ -84,15 +84,14 @@ start_time=$(date +%s)
 echo "Starting task with seed $SEED at $(date)"
 
 # Execute based on the selected variant
-if [ "$AGENT_NAME" == "metric_dqn_bper" ]; then
-    python -m train \
-        --base_dir=logs/ \
-        --gin_files=dqn.gin \
-        --game_name=${GAME_NAME} \
-        --agent_name="${AGENT_NAME}_${BPER_SCHEME}_${SCALING_FACTOR}" \
-        --seed=${SEED} \
-        --gin_bindings="MetricDQNBPERAgent.method_scheme='${BPER_SCHEME}'" \
-        --gin_bindings="MetricDQNBPERAgent.scaling_factor=${SCALING_FACTOR}"
+python -m train \
+    --base_dir=logs/ \
+    --gin_files=dqn.gin \
+    --game_name=${GAME_NAME} \
+    --agent_name="${AGENT_NAME}_${BPER_SCHEME}_${SCALING_FACTOR}" \
+    --seed=${SEED} \
+    --gin_bindings="MetricDQNBPERAgent.method_scheme='${BPER_SCHEME}'" \
+    --gin_bindings="MetricDQNBPERAgent.scaling_factor=${SCALING_FACTOR}"
 
 
 echo "Completed task with seed $SEED at $(date)"
