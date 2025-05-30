@@ -22,6 +22,7 @@ MetricDQNBPERAgent.replay_scheme = 'prioritized'
 MetricDQNBPERAgent.bper_weight = 1 # BPER
 MetricDQNBPERAgent.log_dynamics_stats = True
 MetricDQNBPERAgent.log_replay_buffer_stats = True
+MetricDQNBPERAgent.log_histograms = True
 MetricDQNBPERAgent.fixed_agent_ckpt = 'logs/{}/metric_dqn/442081/checkpoints/ckpt.99'
 
 # Note: We are using the Adam optimizer by default for JaxDQN, which differs

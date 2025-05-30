@@ -41,10 +41,10 @@ import networks
 import custom_replay_buffer
 import pretrained_metric_dqn
 
-@functools.partial(jax.jit, static_argnums=(0, 3, 10, 11, 12, 14))
+@functools.partial(jax.jit, static_argnums=(0, 3, 10, 11, 12, 14, 15))
 def train(network_def, online_params, target_params, optimizer, optimizer_state,
           states, actions, next_states, rewards, terminals, cumulative_gamma,
-          mico_weight, distance_fn, loss_weights, bper_weight = 0):
+          mico_weight, distance_fn, loss_weights, bper_weight = 0, calc_scheme="curr_online_next_target"):
   """Run the training step."""
   def loss_fn(params, bellman_target, target_r, target_next_r, loss_multipliers):
     def q_online(state):
@@ -80,10 +80,17 @@ def train(network_def, online_params, target_params, optimizer, optimizer_state,
     # NOTE: when bper_weight = 0 we are using PER and we don't need to compute the experience distance
     
     if bper_weight > 0:
-      experience_distances = metric_utils.current_next_distances(
-        current_state_representations=representations,
-        next_state_representations=target_next_r, # online_next_r,
-        distance_fn = distance_fn,)
+      if calc_scheme == "curr_online_next_target":
+        experience_distances = metric_utils.current_next_distances(
+          current_state_representations=representations,
+          next_state_representations=target_next_r, # online_next_r,
+          distance_fn = distance_fn,)
+      elif calc_scheme == "curr_online_next_online":
+        tmp_output = jax.vmap(q_online)(next_states)
+        experience_distances = metric_utils.current_next_distances(
+          current_state_representations=representations,
+          next_state_representations=jnp.squeeze(tmp_output.representation), # online_next_r,
+          distance_fn = distance_fn,)
     else:
       experience_distances = jnp.zeros_like(batch_bellman_loss)
 
@@ -135,10 +142,12 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                method_scheme='scaling', # 'softmax', 'softmax_weight'
                log_dynamics_stats=False,
                log_replay_buffer_stats=False,
+               log_histograms=False,
                batch_size_statistics=1024,   #512, # 256,
                game_name=None,
                fixed_agent_ckpt=None,
                scaling_factor=15488, # 15488 is the size of the representation when using the ataria network with input size 84x84x4
+               calc_scheme='curr_online_next_target', # 'curr_online_next_online', 'curr_online_next_target'
                ):
     self._mico_weight = mico_weight
     self._distance_fn = distance_fn
@@ -147,7 +156,9 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
     self._scaling_factor = scaling_factor
     self._log_dynamics_stats = log_dynamics_stats
     self._log_replay_buffer_stats = log_replay_buffer_stats
+    self._log_histograms = log_histograms
     self._batch_size_statistics = batch_size_statistics
+    self._calc_scheme = calc_scheme
 
     self.game_name = game_name
     self._fixed_pretrained_agent = self._create_fixed_agent(fixed_agent_ckpt)
@@ -258,6 +269,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                    curr_states = True,
                    next_states = False,
                    intermediates = True,
+                   use_target_for_next_states = False,
                    batch = None):
       if batch is None:
         batch = self._sample_batch_for_statistics()  # Non-JIT part
@@ -274,7 +286,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
         if next_states:
           batch['output_next']  =  eval_utils.get_features(
               self._fixed_pretrained_agent.network_def,
-              self._fixed_pretrained_agent.online_params,
+              self._fixed_pretrained_agent.online_params if not use_target_for_next_states else self._fixed_pretrained_agent.target_network_params,
               batch['next_state'],
               intermediates
           )
@@ -289,7 +301,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
         if next_states:
           batch["output_next"] =  eval_utils.get_features(
               self.network_def,
-              self.online_params,
+              self.online_params if not use_target_for_next_states else self.target_network_params,
               batch['next_state'],
               intermediates
           )
@@ -352,7 +364,8 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
              self._mico_weight,
              self._distance_fn,
              loss_weights,
-             self._bper_weight)
+             self._bper_weight,
+             self._calc_scheme,)
         
         if self._replay_scheme == 'prioritized':
           # Rainbow and prioritized replay are parametrized by an exponent
@@ -446,6 +459,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                     eval_batch = self._get_outputs(agent_id='fixed', 
                                                   next_states=True, 
                                                   intermediates=False,
+                                                  use_target_for_next_states=True,
                                                   batch=sampled_batch)
                   
                     curr_outputs, next_outputs = eval_batch['output'], eval_batch['output_next']
@@ -469,6 +483,11 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                   stats['Stats/TD-Residuals'] = td_residuals_stats.mean
                   stats['Stats/TD-ResidualsStd'] = jnp.sqrt(td_residuals_stats.variance)
 
+                  if self._log_histograms:
+                    tf.summary.histogram('Hist/BisimulationDistance', metric_distances, step=self.training_steps * 4)
+                    tf.summary.histogram('Hist/EuclideanDistance', euclidean_distances, step=self.training_steps * 4)
+                    tf.summary.histogram('Hist/TD-Residuals', residual_diffs, step=self.training_steps * 4)
+
 
                   prioritized_metric_stats = eval_utils.RunningStats()
                   prioritized_euclidean_stats = eval_utils.RunningStats()
@@ -478,6 +497,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                     eval_batch = self._get_outputs(agent_id='fixed', 
                                                   next_states=True, 
                                                   intermediates=False,
+                                                  use_target_for_next_states=True,
                                                   batch=sampled_batch)
                   
                     curr_outputs, next_outputs = eval_batch['output'], eval_batch['output_next']
@@ -499,6 +519,11 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                   stats['Stats/PrioritizedTD-ResidualsAvg'] = prioritized_td_residuals_stats.mean
                   stats['Stats/PrioritizedTD-ResidualsStd'] = jnp.sqrt(prioritized_td_residuals_stats.variance)
 
+                  if self._log_histograms:
+                    tf.summary.histogram('Hist/PrioritizedBisimulationDistance', prioritized_metric_distances, step=self.training_steps * 4)
+                    tf.summary.histogram('Hist/PrioritizedEuclideanDistance', prioritized_euclidean_distances, step=self.training_steps * 4)
+                    tf.summary.histogram('Hist/PrioritizedTD-Residuals', prioritized_residual_diffs, step=self.training_steps * 4)
+
                   td_errors_stats = eval_utils.RunningStats()
                   online_metric_stats = eval_utils.RunningStats()
                   online_td_residuals_stats = eval_utils.RunningStats()
@@ -507,6 +532,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                     eval_batch = self._get_outputs(agent_id='online',
                                             next_states=True,
                                             intermediates=False,
+                                            use_target_for_next_states=True,
                                             batch=sampled_batch)
 
                     td_errors = eval_utils.log_td_errors(
@@ -532,14 +558,18 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
 
                   stats['Stats/TD-ErrorAvg'] = td_errors_stats.mean
                   stats['Stats/TD-ErrorStd'] = jnp.sqrt(td_errors_stats.variance)
-
-
                   stats['Stats/OnlineBisimulationDistanceAvg'] = online_metric_stats.mean
                   stats['Stats/OnlineBisimulationDistanceStd'] = jnp.sqrt(online_metric_stats.variance)
                   stats['Stats/OnlineTD-ResidualsAvg'] = online_td_residuals_stats.mean
                   stats['Stats/OnlineTD-ResidualsStd'] = jnp.sqrt(online_td_residuals_stats.variance)
                   stats['Stats/OnlineEuclideanDistanceAvg'] = online_euclidean_stats.mean
                   stats['Stats/OnlineEuclideanDistanceStd'] = jnp.sqrt(online_euclidean_stats.variance)
+
+                  if self._log_histograms:
+                    tf.summary.histogram('Hist/TD-Error', td_errors, step=self.training_steps * 4)
+                    tf.summary.histogram('Hist/OnlineBisimulationDistance', online_metric_distances, step=self.training_steps * 4)
+                    tf.summary.histogram('Hist/OnlineTD-Residuals', online_residuals_diff, step=self.training_steps * 4)
+                    tf.summary.histogram('Hist/OnlineEuclideanDistance', online_euclidean_distances, step=self.training_steps * 4)
 
                   prioritized_td_errors_stats = eval_utils.RunningStats()
                   prioritized_online_metric_stats = eval_utils.RunningStats()
@@ -549,6 +579,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                     eval_batch = self._get_outputs(agent_id='online',
                                             next_states=True,
                                             intermediates=False,
+                                            use_target_for_next_states=True,
                                             batch=sampled_batch)
 
                     prioritized_td_errors = eval_utils.log_td_errors(
@@ -579,6 +610,11 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                   stats['Stats/PrioritizedOnlineEuclideanDistanceAvg'] = prioritized_online_euclidean_stats.mean
                   stats['Stats/PrioritizedOnlineEuclideanDistanceStd'] = jnp.sqrt(prioritized_online_euclidean_stats.variance)
 
+                  if self._log_histograms:
+                    tf.summary.histogram('Hist/PrioritizedTD-Error', prioritized_td_errors, step=self.training_steps * 4)
+                    tf.summary.histogram('Hist/PrioritizedOnlineBisimulationDistance', prioritized_online_metric_distances, step=self.training_steps * 4)
+                    tf.summary.histogram('Hist/PrioritizedOnlineTD-Residuals', prioritized_online_residuals_diff, step=self.training_steps * 4)
+                    tf.summary.histogram('Hist/PrioritizedOnlineEuclideanDistance', prioritized_online_euclidean_distances, step=self.training_steps * 4)
         
                 if self._log_dynamics_stats:
                   eval_batch = self._get_outputs(agent_id='online',
@@ -594,7 +630,7 @@ class MetricDQNBPERAgent(dqn_agent.JaxDQNAgent):
                                             batch=prioritized_batches_collected[0])
                   stats['Stats/PrioritizedDormantPercentage'] = eval_utils.log_dormant_percentage(
                     eval_batch["output"][1])
-
+                  
                 for key, value in stats.items():
                     tf.summary.scalar(key, value, step=self.training_steps * 4)
 
