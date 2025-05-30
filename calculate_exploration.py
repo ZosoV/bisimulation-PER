@@ -125,6 +125,7 @@ class WrapperMetriDQNBPERAgent(metric_dqn_bper_agent.MetricDQNBPERAgent):
     eval_batch = self._get_outputs(agent_id='fixed', 
                                     next_states=True, 
                                     intermediates=False,
+                                    use_target_for_next_states=True,
                                     batch=batch)
         
     curr_outputs, next_outputs = eval_batch['output'], eval_batch['output_next']
