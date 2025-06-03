@@ -28,7 +28,7 @@ AGENT_NAME=${AGENT_NAME:-metric_dqn_bper}  # Default to metric_dqn_bper if no ag
 echo "Game name: $GAME_NAME"
 echo "Agent name: $AGENT_NAME"
 BPER_SCHEME=${BPER_SCHEME:-"scaling"}  # Default to softmax if no BPER scheme is specified
-SCALING_FACTOR=${SCALING_FACTOR:-512}  # Default scaling factor
+SCALING_FACTOR=${SCALING_FACTOR:-15488}  # Default scaling factor
 
 # Temporary scratch space for I/O efficiency
 BB_WORKDIR=$(mktemp -d /scratch/${USER}_${SLURM_JOBID}.XXXXXX)
@@ -91,8 +91,10 @@ python -m train \
     --agent_name="${AGENT_NAME}_${BPER_SCHEME}_${SCALING_FACTOR}" \
     --seed=${SEED} \
     --gin_bindings="MetricDQNBPERAgent.method_scheme='${BPER_SCHEME}'" \
-    --gin_bindings="MetricDQNBPERAgent.scaling_factor=${SCALING_FACTOR}" \
-    --gin_bindings="MetricDQNBPERAgent.calc_scheme='curr_online_next_online'"
+    --gin_bindings="MetricDQNBPERAgent.scaling_factor=${SCALING_FACTOR}"
+    
+    #\
+    #--gin_bindings="MetricDQNBPERAgent.calc_scheme='curr_online_next_online'"
 
 
 

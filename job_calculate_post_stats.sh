@@ -2,7 +2,7 @@
 #SBATCH --job-name=bisimulation-rl-DQN
 #SBATCH --array=0-2
 #SBATCH --ntasks=1
-#SBATCH --time=1-00:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --qos=bbdefault
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=o.v.guarnizocabezas@bham.ac.uk
