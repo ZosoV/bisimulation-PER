@@ -2,7 +2,7 @@
 #SBATCH --job-name=bisimulation-rl-DQN
 #SBATCH --array=0-2
 #SBATCH --ntasks=1
-#SBATCH --time=6-00:00:00
+#SBATCH --time=10-00:00:00
 #SBATCH --qos=bbdefault
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=o.v.guarnizocabezas@bham.ac.uk
@@ -91,7 +91,9 @@ python -m train \
     --agent_name="${AGENT_NAME}_${BPER_SCHEME}_${SCALING_FACTOR}" \
     --seed=${SEED} \
     --gin_bindings="MetricDQNBPERAgent.method_scheme='${BPER_SCHEME}'" \
-    --gin_bindings="MetricDQNBPERAgent.scaling_factor=${SCALING_FACTOR}"
+    --gin_bindings="MetricDQNBPERAgent.scaling_factor=${SCALING_FACTOR}" \
+    --gin_bindings="MetricDQNBPERAgent.calc_scheme='curr_online_next_online'"
+
 
 
 echo "Completed task with seed $SEED at $(date)"

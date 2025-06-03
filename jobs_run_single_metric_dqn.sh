@@ -92,8 +92,7 @@ python -m train \
     --gin_bindings="MetricDQNBPERAgent.replay_scheme='uniform'" \
     --gin_bindings="MetricDQNBPERAgent.log_dynamics_stats=False" \
     --gin_bindings="MetricDQNBPERAgent.log_replay_buffer_stats=False" \
-    --gin_bindings="MetricDQNBPERAgent.fixed_agent_ckpt=None" \
-    --gin_bindings="MetricDQNBPERAgent.calc_scheme='curr_online_next_online'"
+    --gin_bindings="MetricDQNBPERAgent.fixed_agent_ckpt=None"
 
 exit_status=$?
 end_time=$(date +%s)
