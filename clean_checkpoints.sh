@@ -13,9 +13,10 @@ if [ -n "$1" ] && [ -d "$1" ]; then
     echo "Keeping: $latest"
     echo "Will delete:"
     # List files that will be deleted (dry run)
-    ls | grep -v 'tmp' | grep -v "^$latest$" | grep -v "sentinel_checkpoint_complete.$latest" | grep -v "ckpt.$latest"
+    # ls | grep -v 'tmp' | grep -v "^$latest$" | grep -v "sentinel_checkpoint_complete.$latest" | grep -v "ckpt.$latest"
     # Actually delete the files (excluding tmp folders)
-    ls | grep -v 'tmp' | grep -v "^$latest$" | grep -v "sentinel_checkpoint_complete.$latest" | grep -v "ckpt.$latest" | xargs rm -rf
+    # ls | grep -v 'tmp' | grep -v "^$latest$" | grep -v "sentinel_checkpoint_complete.$latest" | grep -v "ckpt.$latest" | xargs rm -rf
+    rm -r 98/
 else
     echo "Usage: $0 <directory>"
     echo "Directory must exist"
