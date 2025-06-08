@@ -91,10 +91,8 @@ python -m train \
     --agent_name="${AGENT_NAME}_${BPER_SCHEME}_${SCALING_FACTOR}" \
     --seed=${SEED} \
     --gin_bindings="MetricDQNBPERAgent.method_scheme='${BPER_SCHEME}'" \
-    --gin_bindings="MetricDQNBPERAgent.scaling_factor=${SCALING_FACTOR}"
-    
-    #\
-    #--gin_bindings="MetricDQNBPERAgent.calc_scheme='curr_online_next_online'"
+    --gin_bindings="MetricDQNBPERAgent.scaling_factor=${SCALING_FACTOR}" \
+    --gin_bindings="MetricDQNBPERAgent.calc_scheme='curr_online_next_online'"
 
 
 
