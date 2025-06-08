@@ -12,11 +12,15 @@ if [ -n "$1" ] && [ -d "$1" ]; then
 
     echo "Keeping: $latest"
     echo "Will delete:"
-    # List files that will be deleted (dry run)
-    # ls | grep -v 'tmp' | grep -v "^$latest$" | grep -v "sentinel_checkpoint_complete.$latest" | grep -v "ckpt.$latest"
-    # Actually delete the files (excluding tmp folders)
-    # ls | grep -v 'tmp' | grep -v "^$latest$" | grep -v "sentinel_checkpoint_complete.$latest" | grep -v "ckpt.$latest" | xargs rm -rf
-    rm -r 98/
+    # Check if the folder 98 exists and remove it send a message
+    if [ -d "98" ]; then
+        echo "98/"
+        echo "Removing 98/ directory"
+        rm -r 98/
+    else
+        echo "No 98/ directory found"
+    fi  
+    
 else
     echo "Usage: $0 <directory>"
     echo "Directory must exist"
