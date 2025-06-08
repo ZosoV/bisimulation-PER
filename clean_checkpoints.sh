@@ -2,6 +2,7 @@
 
 if [ -n "$1" ] && [ -d "$1" ]; then
     # Change to the directory and get the latest numbered directory (excluding tmp folders)
+    echo "Entering directory: $1"
     cd "$1" || exit 1
     # latest=$(ls -d [0-9]* 2>/dev/null | grep -v 'tmp' | sort -n | tail -1)
 
