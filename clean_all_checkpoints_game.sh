@@ -2,18 +2,19 @@
 GAME_LIST=("$@")
 # If no games are provided, default to a predefined list
 if [ ${#GAME_LIST[@]} -eq 0 ]; then
-    GAME_LIST=("logs/AirRaid/"
-                "logs/lien/" 
-                "logs/Amidar/")
+    GAME_LIST=("AirRaid/"
+                "Alien/" 
+                "Amidar/")
 fi
 
 # Execute each game sequentially
 for GAME_NAME in "${GAME_LIST[@]}"; do
+    echo "Processing game: logs/${GAME_NAME}"
 
     # Find all checkpoints directories
     echo "The following checkpoints directories will be processed:"
     echo "------------------------------------------------------"
-    find "$GAME_NAME" -type d -name "checkpoints" | while read -r checkpoint_dir; do
+    find "logs/${GAME_NAME}" -type d -name "checkpoints" | while read -r checkpoint_dir; do
         echo "$checkpoint_dir"
     done
     echo "------------------------------------------------------"
@@ -27,9 +28,9 @@ for GAME_NAME in "${GAME_LIST[@]}"; do
     fi
 
     # Process each directory
-    find "$GAME_NAME" -type d -name "checkpoints" | while read -r checkpoint_dir; do
+    find "logs/${GAME_NAME}" -type d -name "checkpoints" | while read -r checkpoint_dir; do
         echo "Processing: $checkpoint_dir"
-        bash clean_checkpoints.sh "$checkpoint_dir"
+        # bash clean_checkpoints.sh "$checkpoint_dir"
     done
 
     echo "Finished processing all checkpoints directories"
