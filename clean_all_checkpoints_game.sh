@@ -30,7 +30,7 @@ for GAME_NAME in "${GAME_LIST[@]}"; do
     # Process each directory
     find "logs/${GAME_NAME}" -type d -name "checkpoints" | while read -r checkpoint_dir; do
         echo "Processing: $checkpoint_dir"
-        # bash clean_checkpoints.sh "$checkpoint_dir"
+        bash clean_checkpoints.sh "$checkpoint_dir"
     done
 
     echo "Finished processing all checkpoints directories"
