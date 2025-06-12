@@ -20,12 +20,12 @@ for GAME_NAME in "${GAME_LIST[@]}"; do
     echo "------------------------------------------------------"
 
     # Ask for confirmation
-    read -p "Do you want to proceed with cleaning these directories? [y/N] " -n 1 -r
-    echo    # move to a new line
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Operation cancelled."
-        exit 0
-    fi
+    # read -p "Do you want to proceed with cleaning these directories? [y/N] " -n 1 -r
+    # echo    # move to a new line
+    # if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    #     echo "Operation cancelled."
+    #     exit 0
+    # fi
 
     # Process each directory
     find "logs/${GAME_NAME}" -type d -name "checkpoints" | while read -r checkpoint_dir; do
