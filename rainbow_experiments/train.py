@@ -29,18 +29,19 @@ import jax
 import jax.numpy as jnp
 import os
 
-import agents.metric_rainbow_agent as metric_rainbow_agent
+# import agents.metric_rainbow_agent as metric_rainbow_agent
+import agents.metric_rainbow_bper_agent as metric_rainbow_bper_agent
 
-flags.DEFINE_string('base_dir', "logs/",
+flags.DEFINE_string('base_dir', "outputs/logs/",
                     'Base directory to host all required sub-directories.')
 flags.DEFINE_string('game_name', "Alien",
                     'Atari Game basename.')
-flags.DEFINE_string('agent_name', "metric_dqn_bper",
+flags.DEFINE_string('agent_name', "metric_rainbow_bper_scaling",
                     'Set the agent name.')
 flags.DEFINE_string('seed', "0",
                     'Random seed to use for the experiment.')
 flags.DEFINE_multi_string(
-    'gin_files', ["dqn.gin"], 'List of paths to gin configuration files.')
+    'gin_files', ["rainbow.gin"], 'List of paths to gin configuration files.')
 flags.DEFINE_multi_string(
     'gin_bindings', [],
     'Gin bindings to override the values set in the config files.')
@@ -91,9 +92,13 @@ def create_metric_agent(sess, environment, agent_name='metric_dqn',
     return jax_implicit_quantile_agent.JaxImplicitQuantileAgent(
         num_actions=environment.action_space.n,
         summary_writer=summary_writer)
-  elif agent_name == 'metric_c51' or agent_name == 'metric_rainbow':
-    return metric_rainbow_agent.MetricRainbowAgent(
-        num_actions=environment.action_space.n, summary_writer=summary_writer)
+  elif agent_name == 'metric_c51' or agent_name == 'metric_rainbow' or agent_name == 'metric_rainbow_bper_scaling' \
+  or agent_name == 'metric_rainbow_bper_softmax':
+    return metric_rainbow_bper_agent.MetricRainbowBPERAgent(
+        num_actions=environment.action_space.n,
+        summary_writer=summary_writer)
+    # return metric_rainbow_agent.MetricRainbowAgent(
+    #     num_actions=environment.action_space.n, summary_writer=summary_writer)
   else:
     raise ValueError('Unknown agent: {}'.format(agent_name))
 

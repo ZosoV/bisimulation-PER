@@ -17,10 +17,10 @@
 
 import collections
 import functools
+from absl import logging
 
 from dopamine.jax import losses
 from dopamine.jax.agents.rainbow import rainbow_agent
-from flax import linen as nn
 import gin
 import jax
 import jax.numpy as jnp
@@ -32,14 +32,11 @@ from dopamine.jax.replay_memory import samplers
 
 # from mico.atari import metric_utils
 
-import metric_utils
-import networks
-import pretrained_metric_dqn
-import custom_replay_buffer
-import eval_utils
-
-NetworkType = collections.namedtuple(
-    'network', ['q_values', 'logits', 'probabilities', 'representation'])
+import agents.metric_utils as metric_utils
+import models.networks as networks
+# import pretrained_metric_dqn
+# import custom_replay_buffer
+import utils.eval_utils as eval_utils
 
 
 @functools.partial(jax.jit, static_argnums=(0, 3, 12, 13, 14, 15))
@@ -138,7 +135,7 @@ def target_distribution(target_network, states, next_states, rewards, terminals,
 
 
 @gin.configurable
-class MetricRainbowAgent(rainbow_agent.JaxRainbowAgent):
+class MetricRainbowBPERAgent(rainbow_agent.JaxRainbowAgent):
   """Rainbow Agent with the MICo loss."""
 
   def __init__(self, 
@@ -151,52 +148,66 @@ class MetricRainbowAgent(rainbow_agent.JaxRainbowAgent):
                batch_size_statistics=1024,
                fixed_agent_ckpt=None,
                bper_weight=0):
+    
+    if bper_weight == 0:
+      logging.info("Creating MetricRainbowBPERAgent with PER.")
+    else:
+      logging.info(f"Creating MetricRainbowBPERAgent with:")
+      logging.info(f"  - bper_weight: {bper_weight}")
+      logging.info(f"  - method_scheme: {method_scheme}")
+    
+    
     self._mico_weight = mico_weight
     self._distance_fn = distance_fn
     network = networks.AtariRainbowNetwork
     super().__init__(num_actions, network=network,
                      summary_writer=summary_writer)
-    self._bper_Weight = bper_weight
+    self._bper_weight = bper_weight
     self._method_scheme = method_scheme
     self.num_actions = num_actions
 
-    self._fixed_pretrained_agent = self._create_fixed_agent(fixed_agent_ckpt)
+    # self._fixed_pretrained_agent = self._create_fixed_agent(fixed_agent_ckpt)
     self._log_replay_buffer_stats = log_replay_buffer_stats and (self._fixed_pretrained_agent is not None)
     self._batch_size_statistics = batch_size_statistics
 
-  def _create_fixed_agent(self, fixed_agent_ckpt):
+    # NOTE: I need to call again build_replay_buffer to set the prioritized version
+    # coz the JaxDQNAgent set by default the uniform replay buffer
+    self._replay_scheme = 'prioritized'
+    self._replay = self._build_replay_buffer()
+
+  # def _create_fixed_agent(self, fixed_agent_ckpt):
     
-    if fixed_agent_ckpt is None:
-      return None
+  #   if fixed_agent_ckpt is None:
+  #     return None
 
-    agent = pretrained_metric_dqn.create_agent(
-          num_actions = self.num_actions,
-          agent_name='metric_dqn', 
-        )
+  #   agent = pretrained_metric_dqn.create_agent(
+  #         num_actions = self.num_actions,
+  #         agent_name='metric_dqn', 
+  #       )
 
-    # NOTE: Change this according to where the pretrained agent is saved
-    pretrained_metric_dqn.reload_checkpoint(agent, fixed_agent_ckpt.format(self.game_name))
+  #   # NOTE: Change this according to where the pretrained agent is saved
+  #   pretrained_metric_dqn.reload_checkpoint(agent, fixed_agent_ckpt.format(self.game_name))
 
-    return agent
+  #   return agent
 
-  def _build_replay_buffer(self):
-    """Creates the replay buffer used by the agent."""
-    if self._replay_scheme not in ['uniform', 'prioritized']:
-      raise ValueError('Invalid replay scheme: {}'.format(self._replay_scheme))
+  # def _build_replay_buffer(self):
+  #   """Creates the replay buffer used by the agent."""
+  #   if self._replay_scheme not in ['uniform', 'prioritized']:
+  #     raise ValueError('Invalid replay scheme: {}'.format(self._replay_scheme))
 
-    transition_accumulator = accumulator.TransitionAccumulator(
-        stack_size=self.stack_size,
-        update_horizon=self.update_horizon,
-        gamma=self.gamma,
-    )
-    sampling_distribution = samplers.PrioritizedSamplingDistribution(
-        seed=self._seed
-    )
-    return custom_replay_buffer.CustomReplayBuffer(
-        transition_accumulator=transition_accumulator,
-        sampling_distribution=sampling_distribution,
-        seed = self._seed,
-    )
+  #   transition_accumulator = accumulator.TransitionAccumulator(
+  #       stack_size=self.stack_size,
+  #       update_horizon=self.update_horizon,
+  #       gamma=self.gamma,
+  #   )
+  #   sampling_distribution = samplers.PrioritizedSamplingDistribution(
+  #       seed=self._seed
+  #   )
+  #   return custom_replay_buffer.CustomReplayBuffer(
+  #       transition_accumulator=transition_accumulator,
+  #       sampling_distribution=sampling_distribution,
+  #       seed = self._seed,
+  #   )
 
   def _train_step(self):
     """Runs a single training step."""
@@ -260,14 +271,15 @@ class MetricRainbowAgent(rainbow_agent.JaxRainbowAgent):
 
 
         # TODO: Set the logging to save the stats during training
-        if self.summary_writer is not None:
-          values = []
-          for k in aux_losses:
-            values.append(
-                tf.compat.v1.Summary.Value(tag=f'Losses/{k}',
-                                           simple_value=aux_losses[k]))
-          summary = tf.compat.v1.Summary(value=values)
-          self.summary_writer.add_summary(summary, self.training_steps)
+        if (self.summary_writer is not None and
+                    self.training_steps > 0 and
+                    self.training_steps % self.summary_writing_frequency == 0):
+          with self.summary_writer.as_default():
+            for key, value in aux_losses.items():
+              logging.info(f"Losses/{key}: {value}")
+              tf.summary.scalar(f'Losses/{key}', value,
+                                step=self.training_steps * 4)
+            
       if self.training_steps % self.target_update_period == 0:
         self._sync_weights()
 
