@@ -34,8 +34,8 @@ from dopamine.jax.replay_memory import samplers
 
 import agents.metric_utils as metric_utils
 import models.networks as networks
-# import pretrained_metric_dqn
-# import custom_replay_buffer
+import agents.pretrained_agent as pretrained_agent
+import replay_memory.custom_replay_buffer as custom_replay_buffer
 import utils.eval_utils as eval_utils
 
 
@@ -146,7 +146,7 @@ class MetricRainbowBPERAgent(rainbow_agent.JaxRainbowAgent):
                method_scheme="scaling",
                log_replay_buffer_stats=False,
                batch_size_statistics=1024,
-               fixed_agent_ckpt=None,
+               eval_agent_ckpt=None,
                bper_weight=0):
     
     if bper_weight == 0:
@@ -166,8 +166,8 @@ class MetricRainbowBPERAgent(rainbow_agent.JaxRainbowAgent):
     self._method_scheme = method_scheme
     self.num_actions = num_actions
 
-    # self._fixed_pretrained_agent = self._create_fixed_agent(fixed_agent_ckpt)
-    self._log_replay_buffer_stats = log_replay_buffer_stats and (self._fixed_pretrained_agent is not None)
+    self._eval_pretrained_agent = self._create_eval_agent(eval_agent_ckpt)
+    self._log_replay_buffer_stats = log_replay_buffer_stats and (self._eval_pretrained_agent is not None)
     self._batch_size_statistics = batch_size_statistics
 
     # NOTE: I need to call again build_replay_buffer to set the prioritized version
@@ -175,39 +175,60 @@ class MetricRainbowBPERAgent(rainbow_agent.JaxRainbowAgent):
     self._replay_scheme = 'prioritized'
     self._replay = self._build_replay_buffer()
 
-  # def _create_fixed_agent(self, fixed_agent_ckpt):
+  def _create_eval_agent(self, fixed_agent_ckpt):
     
-  #   if fixed_agent_ckpt is None:
-  #     return None
+    if fixed_agent_ckpt is None:
+      return None
 
-  #   agent = pretrained_metric_dqn.create_agent(
-  #         num_actions = self.num_actions,
-  #         agent_name='metric_dqn', 
-  #       )
+    agent = pretrained_agent.create_agent(
+          num_actions = self.num_actions,
+          agent_name='metric_rainbow', 
+        )
 
-  #   # NOTE: Change this according to where the pretrained agent is saved
-  #   pretrained_metric_dqn.reload_checkpoint(agent, fixed_agent_ckpt.format(self.game_name))
+    # NOTE: Change this according to where the pretrained agent is saved
+    pretrained_agent.reload_checkpoint(agent, fixed_agent_ckpt.format(self.game_name))
 
-  #   return agent
+    return agent
 
-  # def _build_replay_buffer(self):
-  #   """Creates the replay buffer used by the agent."""
-  #   if self._replay_scheme not in ['uniform', 'prioritized']:
-  #     raise ValueError('Invalid replay scheme: {}'.format(self._replay_scheme))
+  def _build_replay_buffer(self):
+    """Creates the replay buffer used by the agent."""
+    if self._replay_scheme not in ['uniform', 'prioritized']:
+      raise ValueError('Invalid replay scheme: {}'.format(self._replay_scheme))
 
-  #   transition_accumulator = accumulator.TransitionAccumulator(
-  #       stack_size=self.stack_size,
-  #       update_horizon=self.update_horizon,
-  #       gamma=self.gamma,
-  #   )
-  #   sampling_distribution = samplers.PrioritizedSamplingDistribution(
-  #       seed=self._seed
-  #   )
-  #   return custom_replay_buffer.CustomReplayBuffer(
-  #       transition_accumulator=transition_accumulator,
-  #       sampling_distribution=sampling_distribution,
-  #       seed = self._seed,
-  #   )
+    transition_accumulator = accumulator.TransitionAccumulator(
+        stack_size=self.stack_size,
+        update_horizon=self.update_horizon,
+        gamma=self.gamma,
+    )
+    sampling_distribution = samplers.PrioritizedSamplingDistribution(
+        seed=self._seed
+    )
+    return custom_replay_buffer.CustomReplayBuffer(
+        transition_accumulator=transition_accumulator,
+        sampling_distribution=sampling_distribution,
+        seed = self._seed,
+    )
+  
+  def _sample_batch_for_statistics(self, batch_size=None):
+    """Sample elements from the replay buffer."""
+    tmp_replay_elements = collections.OrderedDict()
+    if batch_size is None:
+      elems, metadata = self._replay.sample_uniform(size = self._batch_size_statistics,
+                                            with_sample_metadata=True)
+    else:
+      elems, metadata = self._replay.sample_uniform(size = batch_size,
+                                            with_sample_metadata=True)
+
+    tmp_replay_elements['state'] = elems.state
+    tmp_replay_elements['next_state'] = elems.next_state
+    tmp_replay_elements['action'] = elems.action
+    tmp_replay_elements['reward'] = elems.reward
+    tmp_replay_elements['terminal'] = elems.is_terminal
+    if self._replay_scheme == 'prioritized':
+      tmp_replay_elements['indices'] = metadata.keys
+
+    return tmp_replay_elements
+
 
   def _train_step(self):
     """Runs a single training step."""
