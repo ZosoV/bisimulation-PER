@@ -3,6 +3,7 @@ baselines/
 dopamine_logs/
 logs/
 outputs/
+inputs/
 atari_100k/logs/
 atari_100k/outputs/
 checkpoints/
