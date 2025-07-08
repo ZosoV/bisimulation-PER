@@ -22,15 +22,11 @@ class CustomReplayBuffer(replay_buffer.ReplayBuffer[replay_buffer.ReplayElementT
             sampling_distribution: samplers.SamplingDistribution,
             seed: int = 0,
             *,
-            batch_size: int,
-            max_capacity: int,
             checkpoint_duration: int = 2,
             compress: bool = True,):
         super().__init__(
             transition_accumulator=transition_accumulator,
             sampling_distribution=sampling_distribution,
-            batch_size=batch_size,
-            max_capacity=max_capacity,
             checkpoint_duration=checkpoint_duration,
             compress=compress)
 

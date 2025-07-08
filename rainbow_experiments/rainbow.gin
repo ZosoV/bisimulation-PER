@@ -11,7 +11,7 @@ JaxRainbowAgent.num_atoms = 51
 JaxRainbowAgent.vmax = 10.
 JaxRainbowAgent.gamma = 0.99
 JaxRainbowAgent.update_horizon = 3
-JaxRainbowAgent.min_replay_history = 5000 # 20000  # agent steps
+JaxRainbowAgent.min_replay_history = 20000  # agent steps
 JaxRainbowAgent.update_period = 4
 JaxRainbowAgent.target_update_period = 8000  # agent steps
 JaxRainbowAgent.epsilon_train = 0.01
@@ -19,7 +19,7 @@ JaxRainbowAgent.epsilon_eval = 0.001
 JaxRainbowAgent.epsilon_decay_period = 250000  # agent steps
 JaxRainbowAgent.replay_scheme = 'prioritized'
 
-JaxRainbowAgent.summary_writing_frequency = 500 #250_000 # only for losses
+JaxRainbowAgent.summary_writing_frequency = 250_000 # only for losses
 MetricRainbowBPERAgent.bper_weight=1
 MetricRainbowBPERAgent.method_scheme='scaling'
 
@@ -34,7 +34,7 @@ atari_lib.create_atari_environment.sticky_actions = True
 create_runner.schedule = 'continuous_train'
 create_agent.agent_name = 'jax_rainbow'
 create_agent.debug_mode = True
-Runner.num_iterations = 200
+Runner.num_iterations = 100
 Runner.training_steps = 250000  # agent steps
 Runner.evaluation_steps = 125000  # agent steps
 Runner.max_steps_per_episode = 27000  # agent steps

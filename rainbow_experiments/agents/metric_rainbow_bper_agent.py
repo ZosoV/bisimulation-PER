@@ -297,7 +297,6 @@ class MetricRainbowBPERAgent(rainbow_agent.JaxRainbowAgent):
                     self.training_steps % self.summary_writing_frequency == 0):
           with self.summary_writer.as_default():
             for key, value in aux_losses.items():
-              logging.info(f"Losses/{key}: {value}")
               tf.summary.scalar(f'Losses/{key}', value,
                                 step=self.training_steps * 4)
             
