@@ -20,7 +20,7 @@ JaxRainbowAgent.epsilon_decay_period = 250000  # agent steps
 JaxRainbowAgent.replay_scheme = 'prioritized'
 
 JaxRainbowAgent.summary_writing_frequency = 250_000 # only for losses
-MetricRainbowBPERAgent.bper_weight=1
+MetricRainbowBPERAgent.bper_weight=0
 MetricRainbowBPERAgent.method_scheme='scaling'
 
 

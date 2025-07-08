@@ -65,13 +65,25 @@ for GAME_NAME in "${GAME_LIST[@]}"; do
     game_start_time=$(date +%s)
     echo "Starting game $GAME_NAME at $(date)"
 
-    python -m train \
-        --base_dir=outputs/logs/ \
-        --gin_files=rainbow.gin \
-        --game_name=${GAME_NAME} \
-        --agent_name=${AGENT_NAME} \
-        --seed=${SEED}
-
+    if [ "$AGENT_NAME" == "metric_rainbow" ]; then
+        echo "Running Metric Rainbow with PER"
+        python -m train \
+            --base_dir=outputs/logs/ \
+            --gin_files=rainbow.gin \
+            --game_name=${GAME_NAME} \
+            --agent_name=${AGENT_NAME} \
+            --seed=${SEED}
+    elif [ "$AGENT_NAME" == "metric_rainbow_bper" ]; then
+        echo "Running Metric Rainbow with BPER SCHEME: ${BPER_SCHEME}"
+        python -m train \
+            --base_dir=outputs/logs/ \
+            --gin_files=rainbow.gin \
+            --game_name=${GAME_NAME} \
+            --agent_name="${AGENT_NAME}_${BPER_SCHEME}" \
+            --seed=${SEED} \
+            --gin_bindings="MetricRainbowBPERAgent.bper_weight=1" \
+            --gin_bindings="MetricRainbowBPERAgent.method_scheme='${BPER_SCHEME}'"
+    fi
     # Calculate runtime for the current game
     game_end_time=$(date +%s)
     game_runtime=$((game_end_time - game_start_time))
