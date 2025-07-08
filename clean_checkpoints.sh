@@ -20,7 +20,11 @@ if [ -n "$1" ] && [ -d "$1" ]; then
         rm -r 98/
     else
         echo "No 98/ directory found"
-    fi  
+    fi
+
+    # Remove all the other numbered directories
+    find . -mindepth 1 ! -name '99' ! -name 'ckpt.99' ! -name 'sentinel_checkpoint_complete.99' -exec rm -rf {} +
+
     
 else
     echo "Usage: $0 <directory>"
